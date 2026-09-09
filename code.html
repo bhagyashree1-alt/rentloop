@@ -1,0 +1,670 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Padosi — rent from your neighbours</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600&family=Work+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --paper:#F8F7F2;
+    --ink:#182420;
+    --forest:#22463A;
+    --forest-dark:#152F27;
+    --amber:#E2792E;
+    --amber-dark:#C7621E;
+    --line:#DCD7C8;
+    --muted:#5C6B64;
+    --card:#FFFFFF;
+    --tint:#EFEDE0;
+  }
+  *{box-sizing:border-box;}
+  body{
+    margin:0;
+    background:var(--paper);
+    color:var(--ink);
+    font-family:'Work Sans', sans-serif;
+    min-height:100vh;
+  }
+  h1,h2,h3,.serif{font-family:'Fraunces', serif;}
+  button, input, select, textarea{font-family:inherit;}
+  a{color:inherit;text-decoration:none;}
+  img{display:block;max-width:100%;}
+
+  /* ---------- header ---------- */
+  header{
+    position:sticky;
+    top:0;
+    z-index:20;
+    background:var(--paper);
+    border-bottom:1px solid var(--line);
+  }
+  .wrap{max-width:1100px;margin:0 auto;padding:0 20px;}
+  .header-top{
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    gap:16px;
+    padding-top:20px;
+  }
+  .logo-btn{background:none;border:none;cursor:pointer;padding:0;text-align:left;}
+  .logo{display:flex;align-items:baseline;gap:8px;}
+  .logo-mark{font-size:24px;font-weight:600;color:var(--ink);}
+  .logo-tag{font-size:12px;color:var(--muted);}
+  @media (max-width:520px){.logo-tag{display:none;}}
+
+  .btn-add{
+    display:flex;align-items:center;gap:6px;
+    background:var(--forest);color:#fff;
+    border:none;font-size:14px;font-weight:500;
+    padding:10px 18px;border-radius:999px;cursor:pointer;
+    flex-shrink:0;transition:opacity .15s;
+  }
+  .btn-add:hover{opacity:.9;}
+
+  .btn-back{
+    display:flex;align-items:center;gap:6px;
+    background:var(--forest);color:#fff;
+    border:none;font-size:14px;font-weight:500;
+    padding:10px 18px;border-radius:999px;cursor:pointer;
+    flex-shrink:0;transition:opacity .15s;
+  }
+  .btn-back:hover{opacity:.9;}
+
+  .search-row{margin:20px 0 16px;}
+  .search-bar{
+    display:flex;align-items:center;gap:10px;
+    background:var(--card);border:1px solid var(--line);
+    border-radius:999px;padding:12px 20px;
+    max-width:640px;margin:0 auto;
+  }
+  .search-bar input{
+    width:100%;border:none;outline:none;background:transparent;
+    font-size:14px;color:var(--ink);
+  }
+  .search-bar input::placeholder{color:#A8A296;}
+
+  .chips{
+    display:flex;gap:8px;overflow-x:auto;padding:12px 20px 14px;
+    max-width:1100px;margin:0 auto;
+    scrollbar-width:none;
+  }
+  .chips::-webkit-scrollbar{display:none;}
+  .chip{
+    flex-shrink:0;font-size:14px;padding:7px 16px;border-radius:999px;
+    border:1px solid var(--line);background:transparent;color:var(--muted);
+    cursor:pointer;white-space:nowrap;transition:all .15s;
+  }
+  .chip.active{background:var(--forest);border-color:var(--forest);color:#fff;}
+
+  /* ---------- grid ---------- */
+  .grid{
+    max-width:1100px;margin:0 auto;padding:20px;
+    display:grid;grid-template-columns:repeat(2,1fr);gap:16px;
+  }
+  @media (min-width:640px){.grid{grid-template-columns:repeat(3,1fr);}}
+  @media (min-width:960px){.grid{grid-template-columns:repeat(4,1fr);}}
+
+  .empty{max-width:1100px;margin:0 auto;padding:80px 20px;text-align:center;color:var(--muted);font-size:14px;}
+
+  .card{
+    border:1px solid var(--line);background:var(--card);
+    border-radius:10px;overflow:hidden;cursor:pointer;
+    transition:box-shadow .2s;text-align:left;
+  }
+  .card:hover{box-shadow:0 2px 10px rgba(0,0,0,.06);}
+  .card-img{aspect-ratio:4/3;overflow:hidden;background:#EFEDE4;}
+  .card-img img{width:100%;height:100%;object-fit:cover;transition:transform .3s;}
+  .card:hover .card-img img{transform:scale(1.04);}
+  .no-img{
+    width:100%;height:100%;display:flex;flex-direction:column;align-items:center;justify-content:center;
+    gap:6px;color:var(--muted);background:#EFEDE4;
+  }
+  .no-img span{font-size:11px;}
+  .gallery-main .no-img{border-radius:10px;}
+  .card-body{padding:14px;}
+  .card-cat{font-size:12px;color:var(--muted);margin-bottom:4px;}
+  .card-title{
+    font-size:15px;font-weight:500;line-height:1.35;margin-bottom:10px;
+    display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;
+  }
+  .card-foot{display:flex;align-items:center;justify-content:space-between;gap:8px;}
+  .card-price{color:var(--forest-dark);font-weight:600;font-size:14px;display:flex;align-items:baseline;gap:2px;}
+  .card-price span{color:var(--muted);font-weight:400;font-size:12px;}
+  .card-until{color:var(--muted);font-size:11px;display:flex;align-items:center;gap:4px;white-space:nowrap;}
+
+  /* ---------- detail ---------- */
+  .detail{max-width:1100px;margin:0 auto;padding:20px;}
+  .detail-grid{display:grid;gap:32px;grid-template-columns:1fr;}
+  @media (min-width:800px){.detail-grid{grid-template-columns:1fr 1fr;}}
+
+  .gallery-main{
+    aspect-ratio:4/3;border-radius:10px;overflow:hidden;
+    background:#EFEDE4;border:1px solid var(--line);
+  }
+  .gallery-main img{width:100%;height:100%;object-fit:cover;}
+  .gallery-thumbs{display:flex;gap:8px;margin-top:10px;}
+  .thumb{
+    width:64px;height:64px;border-radius:6px;overflow:hidden;cursor:pointer;
+    border:2px solid var(--line);flex-shrink:0;
+  }
+  .thumb.active{border-color:var(--forest);}
+  .thumb img{width:100%;height:100%;object-fit:cover;}
+
+  .d-cat{font-size:12px;color:var(--muted);margin-bottom:6px;}
+  .d-title{font-size:26px;font-weight:500;line-height:1.2;margin:0 0 12px;}
+  .d-loc{display:flex;align-items:center;gap:6px;color:var(--muted);font-size:14px;margin-bottom:20px;}
+
+  .price-box{border:1px solid var(--line);background:var(--card);border-radius:10px;padding:20px;margin-bottom:20px;}
+  .price-row{display:flex;align-items:flex-end;justify-content:space-between;margin-bottom:16px;}
+  .price-label{font-size:12px;color:var(--muted);margin-bottom:4px;}
+  .price-value{color:var(--forest-dark);font-size:26px;font-weight:600;display:flex;align-items:baseline;gap:2px;}
+  .price-value span{color:var(--muted);font-weight:400;font-size:14px;}
+  .deposit-value{font-size:14px;font-weight:500;display:flex;align-items:center;gap:2px;justify-content:flex-end;}
+
+  .price-meta{border-top:1px solid var(--line);padding-top:16px;display:grid;grid-template-columns:1fr 1fr;gap:12px;}
+  .meta-label{font-size:12px;color:var(--muted);margin-bottom:4px;display:flex;align-items:center;gap:4px;}
+  .meta-value{font-size:14px;font-weight:500;}
+
+  .btn-rent{
+    width:100%;margin-top:20px;background:var(--amber);color:#fff;border:none;
+    font-size:14px;font-weight:500;padding:13px;border-radius:999px;cursor:pointer;
+    display:flex;align-items:center;justify-content:center;gap:8px;transition:background .15s;
+  }
+  .btn-rent:hover{background:var(--amber-dark);}
+
+  .about-title{font-size:16px;font-weight:500;margin:0 0 6px;}
+  .about-text{font-size:14px;color:var(--muted);line-height:1.6;margin:0 0 20px;}
+
+  .owner-box{background:var(--tint);border-left:3px solid var(--forest);border-radius:0 8px 8px 0;padding:16px;}
+  .owner-title{font-size:14px;font-weight:500;color:var(--forest-dark);margin:0 0 6px;}
+  .owner-text{font-size:14px;line-height:1.6;margin:0;}
+
+  /* ---------- form ---------- */
+  .form-wrap{max-width:640px;margin:0 auto;padding:20px;}
+  .form-title{font-size:24px;font-weight:500;margin:0 0 6px;}
+  .form-sub{font-size:14px;color:var(--muted);margin:0 0 28px;}
+  .field{margin-bottom:20px;}
+  .field label{display:block;font-size:14px;font-weight:500;margin-bottom:6px;}
+  .field input[type=text], .field input[type=number], .field input[type=date],
+  .field select, .field textarea{
+    width:100%;border:1px solid var(--line);border-radius:8px;padding:11px 12px;
+    font-size:14px;color:var(--ink);background:#fff;outline:none;
+  }
+  .field textarea{resize:none;}
+  .field input:focus, .field select:focus, .field textarea:focus{border-color:#9aa39c;}
+  .row-2{display:grid;grid-template-columns:1fr 1fr;gap:16px;}
+
+  .img-row{display:flex;flex-wrap:wrap;gap:10px;}
+  .img-thumb{position:relative;width:80px;height:80px;border-radius:8px;overflow:hidden;border:1px solid var(--line);}
+  .img-thumb img{width:100%;height:100%;object-fit:cover;}
+  .img-remove{
+    position:absolute;top:4px;right:4px;background:var(--ink);color:#fff;border:none;
+    border-radius:999px;width:18px;height:18px;display:flex;align-items:center;justify-content:center;
+    cursor:pointer;padding:0;font-size:11px;line-height:1;
+  }
+  .img-add{
+    width:80px;height:80px;border-radius:8px;border:1px dashed var(--line);background:none;
+    display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;
+    color:var(--muted);cursor:pointer;font-size:10px;
+  }
+  .img-add:hover{border-color:#9aa39c;}
+
+  .form-error{color:#B23A2F;font-size:14px;margin:-8px 0 16px;}
+
+  .btn-publish{
+    width:100%;background:var(--forest);color:#fff;border:none;font-size:14px;font-weight:500;
+    padding:13px;border-radius:999px;cursor:pointer;display:flex;align-items:center;justify-content:center;
+    gap:8px;transition:opacity .15s;
+  }
+  .btn-publish:hover{opacity:.9;}
+
+  footer{
+    max-width:1100px;margin:24px auto 0;padding:28px 20px;text-align:center;
+    color:var(--muted);font-size:12px;border-top:1px solid var(--line);
+  }
+
+  .icon{display:inline-block;vertical-align:-2px;}
+</style>
+</head>
+<body>
+
+<div id="app"></div>
+
+<script>
+/* ---------------- icons (tiny inline SVGs) ---------------- */
+const Icon = {
+  search: `<svg class="icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>`,
+  plus: `<svg class="icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>`,
+  back: `<svg class="icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="19" y1="12" x2="5" y2="12"/><polyline points="12 19 5 12 12 5"/></svg>`,
+  pin: `<svg class="icon" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>`,
+  calendar: `<svg class="icon" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>`,
+  shield: `<svg class="icon" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>`,
+  rupee: `<svg class="icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 3h12M6 8h12M6 13l8.5 8M6 13h3c3 0 5-1.5 5-5"/></svg>`,
+  upload: `<svg class="icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>`,
+  imgPlus: `<svg class="icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="9" cy="9" r="2"/><path d="M21 15l-5-5L5 21"/></svg>`,
+};
+
+/* ---------------- data ---------------- */
+const CATEGORIES = ["All","Cameras & Gear","Tools & Equipment","Furniture","Outdoor & Camping","Electronics","Vehicles","Party & Events","Sports","Books & Study Material"];
+const CONDITIONS = ["Like new","Good","Well used","Needs care"];
+
+let products = [];
+let storageReady = false;
+let storageError = false;
+
+/* ---------------- state ---------------- */
+let state = {
+  view: "home",        // home | detail | add
+  selectedId: null,
+  query: "",
+  activeCategory: "All",
+  activeImg: 0,
+  formImages: []
+};
+
+function formatDate(d){
+  if(!d) return "—";
+  const date = new Date(d + "T00:00:00");
+  return date.toLocaleDateString("en-IN",{day:"numeric",month:"short",year:"numeric"});
+}
+function imgOrPlaceholder(images, index, alt){
+  if(images && images.length > 0){
+    return `<img src="${images[index]}" alt="${esc(alt)}">`;
+  }
+  return `<div class="no-img">${Icon.imgPlus}<span>Photo coming soon</span></div>`;
+}
+function esc(str){
+  const div = document.createElement("div");
+  div.textContent = str ?? "";
+  return div.innerHTML;
+}
+
+/* ---------------- persistence (localStorage) ---------------- */
+const STORAGE_KEY = "padosi_products";
+
+function loadProducts(){
+  try{
+    const raw = localStorage.getItem(STORAGE_KEY);
+    products = raw ? JSON.parse(raw) : [];
+  }catch(e){
+    console.error("Could not load saved listings:", e);
+    products = [];
+    storageError = true;
+  }finally{
+    storageReady = true;
+    render();
+  }
+}
+
+function persistProducts(){
+  try{
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(products));
+    return true;
+  }catch(e){
+    console.error("Could not save listings:", e);
+    return false;
+  }
+}
+
+/* ---------------- render ---------------- */
+function render(){
+  const app = document.getElementById("app");
+  let html = "";
+
+  if(!storageReady){
+    app.innerHTML = `<div class="empty">Loading your listings…</div>`;
+    return;
+  }
+
+  html += renderHeader();
+  if(state.view === "home") html += renderChips();
+
+  if(state.view === "home") html += renderGrid();
+  if(state.view === "detail") html += renderDetail();
+  if(state.view === "add") html += renderForm();
+
+  if(storageError){
+    html += `<div class="wrap" style="text-align:center;color:var(--muted);font-size:12px;padding:8px 20px 0;">Couldn't reach saved listings this time — new items will still be added for this session.</div>`;
+  }
+
+  html += `<footer>Padosi is a demo peer-to-peer rental marketplace.</footer>`;
+
+  app.innerHTML = html;
+  attachEvents();
+}
+
+function renderHeader(){
+  const leftSlot = state.view === "home"
+    ? `<button class="logo-btn" id="logoBtn">
+        <div class="logo">
+          <span class="logo-mark serif">Padosi</span>
+          <span class="logo-tag">rent from your neighbours</span>
+        </div>
+      </button>`
+    : `<button class="btn-back" id="backBtn">${Icon.back} Back to browsing</button>`;
+
+  const rightSlot = state.view === "add"
+    ? ""
+    : `<button class="btn-add" id="addBtn">${Icon.plus} List an item</button>`;
+
+  return `
+  <header>
+    <div class="wrap">
+      <div class="header-top">
+        ${leftSlot}
+        ${rightSlot}
+      </div>
+      <div class="search-row">
+        <div class="search-bar">
+          ${Icon.search}
+          <input id="searchInput" type="text" placeholder="Search for a camera, a drill, a tent…" value="${esc(state.query)}">
+        </div>
+      </div>
+    </div>
+  </header>`;
+}
+
+function renderChips(){
+  return `
+  <div class="chips">
+    ${CATEGORIES.map(c => `<button class="chip ${c===state.activeCategory?'active':''}" data-cat="${esc(c)}">${esc(c)}</button>`).join("")}
+  </div>`;
+}
+
+function getFiltered(){
+  const q = state.query.trim().toLowerCase();
+  return products.filter(p=>{
+    const matchesCat = state.activeCategory==="All" || p.category===state.activeCategory;
+    const matchesQ = !q || p.title.toLowerCase().includes(q) || p.category.toLowerCase().includes(q) || p.location.toLowerCase().includes(q);
+    return matchesCat && matchesQ;
+  });
+}
+
+function renderGrid(){
+  const list = getFiltered();
+  if(list.length===0){
+    const noneAtAll = products.length===0;
+    return `<div class="empty">
+      ${noneAtAll
+        ? `No listings yet. Click <strong>List an item</strong> above to add your first one.`
+        : `Nothing matches that search yet. Try another word, or list the item yourself.`}
+    </div>`;
+  }
+  return `
+  <div class="grid">
+    ${list.map(p=>`
+      <button class="card" data-open="${p.id}">
+        <div class="card-img">${imgOrPlaceholder(p.images, 0, p.title)}</div>
+        <div class="card-body">
+          <div class="card-cat">${esc(p.category)}</div>
+          <div class="card-title serif">${esc(p.title)}</div>
+          <div class="card-foot">
+            <div class="card-price">${Icon.rupee}${p.price}<span>/day</span></div>
+            <div class="card-until">${Icon.calendar} till ${formatDate(p.availableUntil)}</div>
+          </div>
+        </div>
+      </button>
+    `).join("")}
+  </div>`;
+}
+
+function renderDetail(){
+  const p = products.find(x=>x.id===state.selectedId);
+  if(!p) return `<div class="empty">Item not found.</div>`;
+  return `
+  <div class="detail">
+    <div class="detail-grid">
+      <div>
+        <div class="gallery-main">${imgOrPlaceholder(p.images, state.activeImg, p.title)}</div>
+        ${p.images.length>1 ? `
+        <div class="gallery-thumbs">
+          ${p.images.map((img,i)=>`
+            <div class="thumb ${i===state.activeImg?'active':''}" data-thumb="${i}">
+              <img src="${img}" alt="">
+            </div>`).join("")}
+        </div>` : ""}
+      </div>
+      <div>
+        <div class="d-cat">${esc(p.category)}</div>
+        <h1 class="d-title serif">${esc(p.title)}</h1>
+        <div class="d-loc">${Icon.pin} ${esc(p.location)}</div>
+
+        <div class="price-box">
+          <div class="price-row">
+            <div>
+              <div class="price-label">Rent</div>
+              <div class="price-value">${Icon.rupee}${p.price}<span>/day</span></div>
+            </div>
+            <div style="text-align:right">
+              <div class="price-label">Refundable deposit</div>
+              <div class="deposit-value">${Icon.rupee}${p.deposit}</div>
+            </div>
+          </div>
+          <div class="price-meta">
+            <div>
+              <div class="meta-label">${Icon.shield} Condition</div>
+              <div class="meta-value">${esc(p.condition)}</div>
+            </div>
+            <div>
+              <div class="meta-label">${Icon.calendar} Last date to rent</div>
+              <div class="meta-value">${formatDate(p.availableUntil)}</div>
+            </div>
+          </div>
+          <button class="btn-rent">Request to rent</button>
+        </div>
+
+        <div>
+          <div class="about-title serif">About this item</div>
+          <p class="about-text">${esc(p.description)}</p>
+        </div>
+
+        <div class="owner-box">
+          <div class="owner-title serif">${esc(p.ownerName)}'s conditions</div>
+          <p class="owner-text">${esc(p.ownerConditions)}</p>
+        </div>
+      </div>
+    </div>
+  </div>`;
+}
+
+function renderForm(){
+  const imgs = state.formImages;
+  return `
+  <div class="form-wrap">
+    <h1 class="form-title serif">List an item for rent</h1>
+    <p class="form-sub">Add photos, set your price, and lay out your conditions so renters know what to expect.</p>
+
+    <form id="addForm">
+      <div class="field">
+        <label>Photos (up to 4)</label>
+        <div class="img-row">
+          ${imgs.map((img,i)=>`
+            <div class="img-thumb">
+              <img src="${img}" alt="">
+              <button type="button" class="img-remove" data-remove="${i}">✕</button>
+            </div>`).join("")}
+          ${imgs.length<4 ? `
+          <button type="button" class="img-add" id="imgAddBtn">${Icon.imgPlus}<span>Add</span></button>
+          <input type="file" id="fileInput" accept="image/*" multiple style="display:none">` : ""}
+        </div>
+      </div>
+
+      <div class="field">
+        <label>Title</label>
+        <input type="text" id="fTitle" placeholder="e.g. Canon DSLR with tripod">
+      </div>
+
+      <div class="field row-2">
+        <div>
+          <label>Category</label>
+          <select id="fCategory">
+            ${CATEGORIES.filter(c=>c!=="All").map(c=>`<option value="${esc(c)}">${esc(c)}</option>`).join("")}
+          </select>
+        </div>
+        <div>
+          <label>Condition</label>
+          <select id="fCondition">
+            ${CONDITIONS.map(c=>`<option value="${esc(c)}">${esc(c)}</option>`).join("")}
+          </select>
+        </div>
+      </div>
+
+      <div class="field row-2">
+        <div>
+          <label>Rent per day (₹)</label>
+          <input type="number" min="0" id="fPrice" placeholder="500">
+        </div>
+        <div>
+          <label>Refundable deposit (₹)</label>
+          <input type="number" min="0" id="fDeposit" placeholder="2000">
+        </div>
+      </div>
+
+      <div class="field row-2">
+        <div>
+          <label>Pickup location</label>
+          <input type="text" id="fLocation" placeholder="Area, city">
+        </div>
+        <div>
+          <label>Last date to rent</label>
+          <input type="date" id="fUntil">
+        </div>
+      </div>
+
+      <div class="field">
+        <label>Description</label>
+        <textarea id="fDescription" rows="3" placeholder="What it is, its history, what's included…"></textarea>
+      </div>
+
+      <div class="field">
+        <label>Your conditions for renters</label>
+        <textarea id="fConditions" rows="3" placeholder="e.g. ID required at pickup, return clean, no outdoor use in rain…"></textarea>
+      </div>
+
+      <div id="formError" class="form-error" style="display:none;"></div>
+
+      <button type="submit" class="btn-publish">${Icon.upload} Publish listing</button>
+    </form>
+  </div>`;
+}
+
+/* ---------------- events ---------------- */
+function attachEvents(){
+  const logoBtn = document.getElementById("logoBtn");
+  if(logoBtn) logoBtn.onclick = goHome;
+
+  const addBtn = document.getElementById("addBtn");
+  if(addBtn) addBtn.onclick = ()=>{ state.view="add"; state.formImages=[]; render(); };
+
+  const searchInput = document.getElementById("searchInput");
+  if(searchInput){
+    searchInput.oninput = (e)=>{
+      state.query = e.target.value;
+      const cursorPos = e.target.selectionStart;
+      render();
+      const freshInput = document.getElementById("searchInput");
+      if(freshInput){
+        freshInput.focus();
+        freshInput.setSelectionRange(cursorPos, cursorPos);
+      }
+    };
+  }
+
+  document.querySelectorAll("[data-cat]").forEach(btn=>{
+    btn.onclick = ()=>{ state.activeCategory = btn.getAttribute("data-cat"); render(); };
+  });
+
+  document.querySelectorAll("[data-open]").forEach(btn=>{
+    btn.onclick = ()=>{ state.selectedId = btn.getAttribute("data-open"); state.view="detail"; state.activeImg=0; render(); window.scrollTo(0,0); };
+  });
+
+  const backBtn = document.getElementById("backBtn");
+  if(backBtn) backBtn.onclick = goHome;
+
+  document.querySelectorAll("[data-thumb]").forEach(t=>{
+    t.onclick = ()=>{ state.activeImg = Number(t.getAttribute("data-thumb")); render(); };
+  });
+
+  const imgAddBtn = document.getElementById("imgAddBtn");
+  const fileInput = document.getElementById("fileInput");
+  if(imgAddBtn && fileInput){
+    imgAddBtn.onclick = ()=> fileInput.click();
+    fileInput.onchange = (e)=>{
+      const files = Array.from(e.target.files).slice(0, 4-state.formImages.length);
+      let loaded = 0;
+      files.forEach(file=>{
+        const reader = new FileReader();
+        reader.onload = ()=>{
+          state.formImages.push(reader.result);
+          loaded++;
+          if(loaded===files.length) render();
+        };
+        reader.readAsDataURL(file);
+      });
+    };
+  }
+
+  document.querySelectorAll("[data-remove]").forEach(btn=>{
+    btn.onclick = ()=>{
+      const i = Number(btn.getAttribute("data-remove"));
+      state.formImages.splice(i,1);
+      render();
+    };
+  });
+
+  const addForm = document.getElementById("addForm");
+  if(addForm){
+    addForm.onsubmit = (e)=>{
+      e.preventDefault();
+      const title = document.getElementById("fTitle").value.trim();
+      const price = document.getElementById("fPrice").value;
+      const until = document.getElementById("fUntil").value;
+      const errorEl = document.getElementById("formError");
+
+      if(!title || !price || !until || state.formImages.length===0){
+        errorEl.textContent = "Please add a title, daily rent, a closing date, and at least one photo.";
+        errorEl.style.display = "block";
+        return;
+      }
+
+      const newProduct = {
+        id: "u"+Date.now(),
+        title,
+        category: document.getElementById("fCategory").value,
+        price: Number(price),
+        deposit: Number(document.getElementById("fDeposit").value) || 0,
+        condition: document.getElementById("fCondition").value,
+        location: document.getElementById("fLocation").value.trim() || "Location not specified",
+        availableUntil: until,
+        description: document.getElementById("fDescription").value.trim() || "No description provided.",
+        ownerName: "You",
+        ownerConditions: document.getElementById("fConditions").value.trim() || "No special conditions specified.",
+        images: state.formImages.slice()
+      };
+
+      products.unshift(newProduct);
+      const saved = persistProducts();
+      if(!saved){
+        products.shift();
+        errorEl.textContent = "Couldn't save this listing — it may be too large (try fewer or smaller photos) or your browser's storage is full.";
+        errorEl.style.display = "block";
+        return;
+      }
+
+      goHome();
+    };
+  }
+}
+
+function goHome(){
+  state.view = "home";
+  state.selectedId = null;
+  render();
+}
+
+loadProducts();
+</script>
+</body>
+</html>
