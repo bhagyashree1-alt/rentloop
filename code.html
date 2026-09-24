@@ -6,233 +6,46 @@
 <title>Padosi — rent from your neighbours</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600&family=Work+Sans:wght@400;500;600&display=swap" rel="stylesheet">
-<style>
-  :root{
-    --paper:#F8F7F2;
-    --ink:#182420;
-    --forest:#22463A;
-    --forest-dark:#152F27;
-    --amber:#E2792E;
-    --amber-dark:#C7621E;
-    --line:#DCD7C8;
-    --muted:#5C6B64;
-    --card:#FFFFFF;
-    --tint:#EFEDE0;
-  }
-  *{box-sizing:border-box;}
-  body{
-    margin:0;
-    background:var(--paper);
-    color:var(--ink);
-    font-family:'Work Sans', sans-serif;
-    min-height:100vh;
-  }
-  h1,h2,h3,.serif{font-family:'Fraunces', serif;}
-  button, input, select, textarea{font-family:inherit;}
-  a{color:inherit;text-decoration:none;}
-  img{display:block;max-width:100%;}
-
-  /* ---------- header ---------- */
-  header{
-    position:sticky;
-    top:0;
-    z-index:20;
-    background:var(--paper);
-    border-bottom:1px solid var(--line);
-  }
-  .wrap{max-width:1100px;margin:0 auto;padding:0 20px;}
-  .header-top{
-    display:flex;
-    align-items:center;
-    justify-content:space-between;
-    gap:16px;
-    padding-top:20px;
-  }
-  .logo-btn{background:none;border:none;cursor:pointer;padding:0;text-align:left;}
-  .logo{display:flex;align-items:baseline;gap:8px;}
-  .logo-mark{font-size:24px;font-weight:600;color:var(--ink);}
-  .logo-tag{font-size:12px;color:var(--muted);}
-  @media (max-width:520px){.logo-tag{display:none;}}
-
-  .btn-add{
-    display:flex;align-items:center;gap:6px;
-    background:var(--forest);color:#fff;
-    border:none;font-size:14px;font-weight:500;
-    padding:10px 18px;border-radius:999px;cursor:pointer;
-    flex-shrink:0;transition:opacity .15s;
-  }
-  .btn-add:hover{opacity:.9;}
-
-  .btn-back{
-    display:flex;align-items:center;gap:6px;
-    background:var(--forest);color:#fff;
-    border:none;font-size:14px;font-weight:500;
-    padding:10px 18px;border-radius:999px;cursor:pointer;
-    flex-shrink:0;transition:opacity .15s;
-  }
-  .btn-back:hover{opacity:.9;}
-
-  .search-row{margin:20px 0 16px;}
-  .search-bar{
-    display:flex;align-items:center;gap:10px;
-    background:var(--card);border:1px solid var(--line);
-    border-radius:999px;padding:12px 20px;
-    max-width:640px;margin:0 auto;
-  }
-  .search-bar input{
-    width:100%;border:none;outline:none;background:transparent;
-    font-size:14px;color:var(--ink);
-  }
-  .search-bar input::placeholder{color:#A8A296;}
-
-  .chips{
-    display:flex;gap:8px;overflow-x:auto;padding:12px 20px 14px;
-    max-width:1100px;margin:0 auto;
-    scrollbar-width:none;
-  }
-  .chips::-webkit-scrollbar{display:none;}
-  .chip{
-    flex-shrink:0;font-size:14px;padding:7px 16px;border-radius:999px;
-    border:1px solid var(--line);background:transparent;color:var(--muted);
-    cursor:pointer;white-space:nowrap;transition:all .15s;
-  }
-  .chip.active{background:var(--forest);border-color:var(--forest);color:#fff;}
-
-  /* ---------- grid ---------- */
-  .grid{
-    max-width:1100px;margin:0 auto;padding:20px;
-    display:grid;grid-template-columns:repeat(2,1fr);gap:16px;
-  }
-  @media (min-width:640px){.grid{grid-template-columns:repeat(3,1fr);}}
-  @media (min-width:960px){.grid{grid-template-columns:repeat(4,1fr);}}
-
-  .empty{max-width:1100px;margin:0 auto;padding:80px 20px;text-align:center;color:var(--muted);font-size:14px;}
-
-  .card{
-    border:1px solid var(--line);background:var(--card);
-    border-radius:10px;overflow:hidden;cursor:pointer;
-    transition:box-shadow .2s;text-align:left;
-  }
-  .card:hover{box-shadow:0 2px 10px rgba(0,0,0,.06);}
-  .card-img{aspect-ratio:4/3;overflow:hidden;background:#EFEDE4;}
-  .card-img img{width:100%;height:100%;object-fit:cover;transition:transform .3s;}
-  .card:hover .card-img img{transform:scale(1.04);}
-  .no-img{
-    width:100%;height:100%;display:flex;flex-direction:column;align-items:center;justify-content:center;
-    gap:6px;color:var(--muted);background:#EFEDE4;
-  }
-  .no-img span{font-size:11px;}
-  .gallery-main .no-img{border-radius:10px;}
-  .card-body{padding:14px;}
-  .card-cat{font-size:12px;color:var(--muted);margin-bottom:4px;}
-  .card-title{
-    font-size:15px;font-weight:500;line-height:1.35;margin-bottom:10px;
-    display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;
-  }
-  .card-foot{display:flex;align-items:center;justify-content:space-between;gap:8px;}
-  .card-price{color:var(--forest-dark);font-weight:600;font-size:14px;display:flex;align-items:baseline;gap:2px;}
-  .card-price span{color:var(--muted);font-weight:400;font-size:12px;}
-  .card-until{color:var(--muted);font-size:11px;display:flex;align-items:center;gap:4px;white-space:nowrap;}
-
-  /* ---------- detail ---------- */
-  .detail{max-width:1100px;margin:0 auto;padding:20px;}
-  .detail-grid{display:grid;gap:32px;grid-template-columns:1fr;}
-  @media (min-width:800px){.detail-grid{grid-template-columns:1fr 1fr;}}
-
-  .gallery-main{
-    aspect-ratio:4/3;border-radius:10px;overflow:hidden;
-    background:#EFEDE4;border:1px solid var(--line);
-  }
-  .gallery-main img{width:100%;height:100%;object-fit:cover;}
-  .gallery-thumbs{display:flex;gap:8px;margin-top:10px;}
-  .thumb{
-    width:64px;height:64px;border-radius:6px;overflow:hidden;cursor:pointer;
-    border:2px solid var(--line);flex-shrink:0;
-  }
-  .thumb.active{border-color:var(--forest);}
-  .thumb img{width:100%;height:100%;object-fit:cover;}
-
-  .d-cat{font-size:12px;color:var(--muted);margin-bottom:6px;}
-  .d-title{font-size:26px;font-weight:500;line-height:1.2;margin:0 0 12px;}
-  .d-loc{display:flex;align-items:center;gap:6px;color:var(--muted);font-size:14px;margin-bottom:20px;}
-
-  .price-box{border:1px solid var(--line);background:var(--card);border-radius:10px;padding:20px;margin-bottom:20px;}
-  .price-row{display:flex;align-items:flex-end;justify-content:space-between;margin-bottom:16px;}
-  .price-label{font-size:12px;color:var(--muted);margin-bottom:4px;}
-  .price-value{color:var(--forest-dark);font-size:26px;font-weight:600;display:flex;align-items:baseline;gap:2px;}
-  .price-value span{color:var(--muted);font-weight:400;font-size:14px;}
-  .deposit-value{font-size:14px;font-weight:500;display:flex;align-items:center;gap:2px;justify-content:flex-end;}
-
-  .price-meta{border-top:1px solid var(--line);padding-top:16px;display:grid;grid-template-columns:1fr 1fr;gap:12px;}
-  .meta-label{font-size:12px;color:var(--muted);margin-bottom:4px;display:flex;align-items:center;gap:4px;}
-  .meta-value{font-size:14px;font-weight:500;}
-
-  .btn-rent{
-    width:100%;margin-top:20px;background:var(--amber);color:#fff;border:none;
-    font-size:14px;font-weight:500;padding:13px;border-radius:999px;cursor:pointer;
-    display:flex;align-items:center;justify-content:center;gap:8px;transition:background .15s;
-  }
-  .btn-rent:hover{background:var(--amber-dark);}
-
-  .about-title{font-size:16px;font-weight:500;margin:0 0 6px;}
-  .about-text{font-size:14px;color:var(--muted);line-height:1.6;margin:0 0 20px;}
-
-  .owner-box{background:var(--tint);border-left:3px solid var(--forest);border-radius:0 8px 8px 0;padding:16px;}
-  .owner-title{font-size:14px;font-weight:500;color:var(--forest-dark);margin:0 0 6px;}
-  .owner-text{font-size:14px;line-height:1.6;margin:0;}
-
-  /* ---------- form ---------- */
-  .form-wrap{max-width:640px;margin:0 auto;padding:20px;}
-  .form-title{font-size:24px;font-weight:500;margin:0 0 6px;}
-  .form-sub{font-size:14px;color:var(--muted);margin:0 0 28px;}
-  .field{margin-bottom:20px;}
-  .field label{display:block;font-size:14px;font-weight:500;margin-bottom:6px;}
-  .field input[type=text], .field input[type=number], .field input[type=date],
-  .field select, .field textarea{
-    width:100%;border:1px solid var(--line);border-radius:8px;padding:11px 12px;
-    font-size:14px;color:var(--ink);background:#fff;outline:none;
-  }
-  .field textarea{resize:none;}
-  .field input:focus, .field select:focus, .field textarea:focus{border-color:#9aa39c;}
-  .row-2{display:grid;grid-template-columns:1fr 1fr;gap:16px;}
-
-  .img-row{display:flex;flex-wrap:wrap;gap:10px;}
-  .img-thumb{position:relative;width:80px;height:80px;border-radius:8px;overflow:hidden;border:1px solid var(--line);}
-  .img-thumb img{width:100%;height:100%;object-fit:cover;}
-  .img-remove{
-    position:absolute;top:4px;right:4px;background:var(--ink);color:#fff;border:none;
-    border-radius:999px;width:18px;height:18px;display:flex;align-items:center;justify-content:center;
-    cursor:pointer;padding:0;font-size:11px;line-height:1;
-  }
-  .img-add{
-    width:80px;height:80px;border-radius:8px;border:1px dashed var(--line);background:none;
-    display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;
-    color:var(--muted);cursor:pointer;font-size:10px;
-  }
-  .img-add:hover{border-color:#9aa39c;}
-
-  .form-error{color:#B23A2F;font-size:14px;margin:-8px 0 16px;}
-
-  .btn-publish{
-    width:100%;background:var(--forest);color:#fff;border:none;font-size:14px;font-weight:500;
-    padding:13px;border-radius:999px;cursor:pointer;display:flex;align-items:center;justify-content:center;
-    gap:8px;transition:opacity .15s;
-  }
-  .btn-publish:hover{opacity:.9;}
-
-  footer{
-    max-width:1100px;margin:24px auto 0;padding:28px 20px;text-align:center;
-    color:var(--muted);font-size:12px;border-top:1px solid var(--line);
-  }
-
-  .icon{display:inline-block;vertical-align:-2px;}
-</style>
+<link rel="stylesheet" href="style.css">
+<!-- Firebase (compat build — works with plain <script> tags, no bundler needed) -->
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
 </head>
 <body>
 
 <div id="app"></div>
 
 <script>
+/* ==================================================================
+   FIREBASE SETUP
+   1. Go to https://console.firebase.google.com and create a project.
+   2. Inside it, click "Add app" → Web, and copy the config object it
+      gives you into firebaseConfig below.
+   3. In the left sidebar go to Build → Firestore Database → Create
+      database (Native mode, any region is fine).
+   4. Under the Rules tab, start permissive while you're testing:
+        rules_version = '2';
+        service cloud.firestore {
+          match /databases/{database}/documents {
+            match /products/{doc} {
+              allow read, write: if true;
+            }
+          }
+        }
+      Lock this down (e.g. require auth) before you launch for real.
+   ================================================================== */
+const firebaseConfig = {
+ apiKey: "AIzaSyAR_PqOXfM9cedwrSfpTiT2KNONpn9gqBk",
+    authDomain: "peer-to-peer-rental.firebaseapp.com",
+    projectId: "peer-to-peer-rental",
+    storageBucket: "peer-to-peer-rental.firebasestorage.app",
+    messagingSenderId: "899735045068",
+    appId: "1:899735045068:web:92eb2ce864e82c7da59369"
+};
+firebase.initializeApp(firebaseConfig);
+const db = firebase.firestore();
+const productsCollection = db.collection("products");
+
 /* ---------------- icons (tiny inline SVGs) ---------------- */
 const Icon = {
   search: `<svg class="icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>`,
@@ -253,6 +66,7 @@ const CONDITIONS = ["Like new","Good","Well used","Needs care"];
 let products = [];
 let storageReady = false;
 let storageError = false;
+let unsubscribeProducts = null;
 
 /* ---------------- state ---------------- */
 let state = {
@@ -281,31 +95,50 @@ function esc(str){
   return div.innerHTML;
 }
 
-/* ---------------- persistence (localStorage) ---------------- */
-const STORAGE_KEY = "padosi_products";
-
-function loadProducts(){
-  try{
-    const raw = localStorage.getItem(STORAGE_KEY);
-    products = raw ? JSON.parse(raw) : [];
-  }catch(e){
-    console.error("Could not load saved listings:", e);
-    products = [];
-    storageError = true;
-  }finally{
-    storageReady = true;
-    render();
-  }
+/* ---------------- shrink photos before they go in a Firestore doc ---------------- */
+function resizeImage(file, maxWidth = 900, quality = 0.72){
+  return new Promise((resolve, reject)=>{
+    const reader = new FileReader();
+    reader.onload = (e)=>{
+      const img = new Image();
+      img.onload = ()=>{
+        const scale = Math.min(1, maxWidth / img.width);
+        const canvas = document.createElement("canvas");
+        canvas.width = Math.round(img.width * scale);
+        canvas.height = Math.round(img.height * scale);
+        const ctx = canvas.getContext("2d");
+        ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+        resolve(canvas.toDataURL("image/jpeg", quality));
+      };
+      img.onerror = ()=> reject(new Error("Could not read image"));
+      img.src = e.target.result;
+    };
+    reader.onerror = ()=> reject(new Error("Could not read file"));
+    reader.readAsDataURL(file);
+  });
 }
 
-function persistProducts(){
-  try{
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(products));
-    return true;
-  }catch(e){
-    console.error("Could not save listings:", e);
-    return false;
-  }
+/* ---------------- persistence (Firestore) ---------------- */
+function loadProducts(){
+  unsubscribeProducts = productsCollection
+    .orderBy("createdAt", "desc")
+    .onSnapshot(
+      (snapshot)=>{
+        products = snapshot.docs.map(doc => ({
+          id: doc.id,
+          ...doc.data({ serverTimestamps: "estimate" })
+        }));
+        storageReady = true;
+        storageError = false;
+        render();
+      },
+      (err)=>{
+        console.error("Could not load listings:", err);
+        storageReady = true;
+        storageError = true;
+        render();
+      }
+    );
 }
 
 /* ---------------- render ---------------- */
@@ -326,7 +159,7 @@ function render(){
   if(state.view === "add") html += renderForm();
 
   if(storageError){
-    html += `<div class="wrap" style="text-align:center;color:var(--muted);font-size:12px;padding:8px 20px 0;">Couldn't reach saved listings this time — new items will still be added for this session.</div>`;
+    html += `<div class="wrap" style="text-align:center;color:var(--muted);font-size:12px;padding:8px 20px 0;">Couldn't reach the database right now — check your Firebase config and internet connection.</div>`;
   }
 
   html += `<footer>Padosi is a demo peer-to-peer rental marketplace.</footer>`;
@@ -591,18 +424,17 @@ function attachEvents(){
   const fileInput = document.getElementById("fileInput");
   if(imgAddBtn && fileInput){
     imgAddBtn.onclick = ()=> fileInput.click();
-    fileInput.onchange = (e)=>{
+    fileInput.onchange = async (e)=>{
       const files = Array.from(e.target.files).slice(0, 4-state.formImages.length);
-      let loaded = 0;
-      files.forEach(file=>{
-        const reader = new FileReader();
-        reader.onload = ()=>{
-          state.formImages.push(reader.result);
-          loaded++;
-          if(loaded===files.length) render();
-        };
-        reader.readAsDataURL(file);
-      });
+      for(const file of files){
+        try{
+          const dataUrl = await resizeImage(file);
+          state.formImages.push(dataUrl);
+          render();
+        }catch(err){
+          console.error("Could not process image:", err);
+        }
+      }
     };
   }
 
@@ -616,12 +448,13 @@ function attachEvents(){
 
   const addForm = document.getElementById("addForm");
   if(addForm){
-    addForm.onsubmit = (e)=>{
+    addForm.onsubmit = async (e)=>{
       e.preventDefault();
       const title = document.getElementById("fTitle").value.trim();
       const price = document.getElementById("fPrice").value;
       const until = document.getElementById("fUntil").value;
       const errorEl = document.getElementById("formError");
+      const submitBtn = addForm.querySelector(".btn-publish");
 
       if(!title || !price || !until || state.formImages.length===0){
         errorEl.textContent = "Please add a title, daily rent, a closing date, and at least one photo.";
@@ -630,7 +463,6 @@ function attachEvents(){
       }
 
       const newProduct = {
-        id: "u"+Date.now(),
         title,
         category: document.getElementById("fCategory").value,
         price: Number(price),
@@ -641,19 +473,25 @@ function attachEvents(){
         description: document.getElementById("fDescription").value.trim() || "No description provided.",
         ownerName: "You",
         ownerConditions: document.getElementById("fConditions").value.trim() || "No special conditions specified.",
-        images: state.formImages.slice()
+        images: state.formImages.slice(),
+        createdAt: firebase.firestore.FieldValue.serverTimestamp()
       };
 
-      products.unshift(newProduct);
-      const saved = persistProducts();
-      if(!saved){
-        products.shift();
-        errorEl.textContent = "Couldn't save this listing — it may be too large (try fewer or smaller photos) or your browser's storage is full.";
-        errorEl.style.display = "block";
-        return;
-      }
+      errorEl.style.display = "none";
+      submitBtn.disabled = true;
+      submitBtn.textContent = "Publishing…";
 
-      goHome();
+      try{
+        await productsCollection.add(newProduct);
+        goHome();
+      }catch(err){
+        console.error("Could not publish listing:", err);
+        errorEl.textContent = "Couldn't publish this listing — check your Firebase config/rules, or try fewer or smaller photos.";
+        errorEl.style.display = "block";
+      }finally{
+        submitBtn.disabled = false;
+        submitBtn.innerHTML = `${Icon.upload} Publish listing`;
+      }
     };
   }
 }
