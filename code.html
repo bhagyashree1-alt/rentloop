@@ -10,6 +10,7 @@
 <!-- Firebase (compat build — works with plain <script> tags, no bundler needed) -->
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
 </head>
 <body>
 
@@ -18,21 +19,25 @@
 <script>
 /* ==================================================================
    FIREBASE SETUP
-   1. Go to https://console.firebase.google.com and create a project.
-   2. Inside it, click "Add app" → Web, and copy the config object it
-      gives you into firebaseConfig below.
-   3. In the left sidebar go to Build → Firestore Database → Create
-      database (Native mode, any region is fine).
-   4. Under the Rules tab, start permissive while you're testing:
+   1. In Firebase Console → Build → Authentication → Sign-in method,
+      enable "Email/Password" and "Google" providers (both are OFF
+      by default — turn them on or login/signup will fail).
+   2. Firestore rules (Build → Firestore Database → Rules) need to
+      allow the new "users" and "bookings" collections too. Your
+      current wildcard rule already covers this:
         rules_version = '2';
         service cloud.firestore {
           match /databases/{database}/documents {
-            match /products/{doc} {
+            match /{document=**} {
               allow read, write: if true;
             }
           }
         }
-      Lock this down (e.g. require auth) before you launch for real.
+      This is open to anyone — fine for testing. Before you launch,
+      tighten it to require login, e.g.:
+        match /{document=**} {
+          allow read, write: if request.auth != null;
+        }
    ================================================================== */
 const firebaseConfig = {
  apiKey: "AIzaSyAR_PqOXfM9cedwrSfpTiT2KNONpn9gqBk",
@@ -43,8 +48,11 @@ const firebaseConfig = {
     appId: "1:899735045068:web:92eb2ce864e82c7da59369"
 };
 firebase.initializeApp(firebaseConfig);
+const auth = firebase.auth();
 const db = firebase.firestore();
 const productsCollection = db.collection("products");
+const usersCollection = db.collection("users");
+const bookingsCollection = db.collection("bookings");
 
 /* ---------------- icons (tiny inline SVGs) ---------------- */
 const Icon = {
@@ -57,25 +65,50 @@ const Icon = {
   rupee: `<svg class="icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 3h12M6 8h12M6 13l8.5 8M6 13h3c3 0 5-1.5 5-5"/></svg>`,
   upload: `<svg class="icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>`,
   imgPlus: `<svg class="icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="9" cy="9" r="2"/><path d="M21 15l-5-5L5 21"/></svg>`,
+  chevDown: `<svg class="icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>`,
+  logout: `<svg class="icon" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>`,
+  swap: `<svg class="icon" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="17 1 21 5 17 9"/><path d="M3 11V9a4 4 0 0 1 4-4h14"/><polyline points="7 23 3 19 7 15"/><path d="M21 13v2a4 4 0 0 1-4 4H3"/></svg>`,
+  edit: `<svg class="icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>`,
+  trash: `<svg class="icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6M14 11v6"/></svg>`,
+  check: `<svg class="icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>`,
+  x: `<svg class="icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>`,
+  google: `<svg width="17" height="17" viewBox="0 0 48 48"><path fill="#FFC107" d="M43.6 20.5H42V20H24v8h11.3C33.7 32.6 29.3 36 24 36c-6.6 0-12-5.4-12-12s5.4-12 12-12c3.1 0 5.8 1.1 8 3l6-6C34.6 5.1 29.6 3 24 3 12.4 3 3 12.4 3 24s9.4 21 21 21 21-9.4 21-21c0-1.4-.1-2.5-.4-3.5z"/><path fill="#FF3D00" d="M6.3 14.7l6.6 4.8C14.5 15.8 18.9 13 24 13c3.1 0 5.8 1.1 8 3l6-6C34.6 5.1 29.6 3 24 3 16.3 3 9.7 7.3 6.3 14.7z"/><path fill="#4CAF50" d="M24 45c5.5 0 10.4-1.9 14.3-5.1l-6.6-5.6C29.6 36 26.9 37 24 37c-5.3 0-9.7-3.4-11.3-8.1l-6.6 5C9.6 40.6 16.2 45 24 45z"/><path fill="#1976D2" d="M43.6 20.5H42V20H24v8h11.3c-.8 2.3-2.3 4.3-4.2 5.7l6.6 5.6C41.4 36.6 45 30.9 45 24c0-1.4-.1-2.5-.4-3.5z"/></svg>`,
 };
 
 /* ---------------- data ---------------- */
 const CATEGORIES = ["All","Cameras & Gear","Tools & Equipment","Furniture","Outdoor & Camping","Electronics","Vehicles","Party & Events","Sports","Books & Study Material"];
 const CONDITIONS = ["Like new","Good","Well used","Needs care"];
+const STATUS_LABEL = { pending:"Requested", approved:"Approved", rejected:"Declined", completed:"Completed" };
 
 let products = [];
 let storageReady = false;
 let storageError = false;
-let unsubscribeProducts = null;
+
+let authReady = false;
+let authUser = null;     // firebase user object
+let userProfile = null;  // {name, email, role}
+let profileReady = false;
+let activeRole = null;   // "user" | "host"
+let showRoleModal = false;
+
+let bookingsAsRenter = [];
+let bookingsAsOwner = [];
+let unsubBookingsAsRenter = null;
+let unsubBookingsAsOwner = null;
 
 /* ---------------- state ---------------- */
 let state = {
-  view: "home",        // home | detail | add
+  view: "home",         // auth | home | detail | myRentals | add | myListings | requests
   selectedId: null,
+  editingId: null,
   query: "",
   activeCategory: "All",
   activeImg: 0,
-  formImages: []
+  formImages: [],
+  authMode: "login",     // login | signup
+  authError: "",
+  authBusy: false,
+  menuOpen: false
 };
 
 function formatDate(d){
@@ -93,6 +126,29 @@ function esc(str){
   const div = document.createElement("div");
   div.textContent = str ?? "";
   return div.innerHTML;
+}
+function friendlyAuthError(err, mode){
+  const code = err.code || "";
+  if(mode === "login" && (code === "auth/user-not-found" || code === "auth/invalid-credential" || code === "auth/wrong-password")){
+    return "We couldn't log you in with that email and password. If you don't have an account yet, sign up below first.";
+  }
+  if(code === "auth/email-already-in-use"){
+    return "That email already has an account — try logging in instead.";
+  }
+  if(code === "auth/weak-password"){
+    return "Please use a password with at least 6 characters.";
+  }
+  if(code === "auth/invalid-email"){
+    return "That doesn't look like a valid email address.";
+  }
+  if(code === "auth/too-many-requests"){
+    return "Too many attempts — please wait a moment and try again.";
+  }
+  return err.message || "Something went wrong.";
+}
+function initials(name){
+  if(!name) return "?";
+  return name.trim().split(/\s+/).slice(0,2).map(w=>w[0].toUpperCase()).join("");
 }
 
 /* ---------------- shrink photos before they go in a Firestore doc ---------------- */
@@ -118,9 +174,89 @@ function resizeImage(file, maxWidth = 900, quality = 0.72){
   });
 }
 
-/* ---------------- persistence (Firestore) ---------------- */
+/* ---------------- auth ---------------- */
+auth.onAuthStateChanged(async (user)=>{
+  authReady = true;
+  authUser = user;
+  state.menuOpen = false;
+
+  if(unsubBookingsAsRenter){ unsubBookingsAsRenter(); unsubBookingsAsRenter=null; }
+  if(unsubBookingsAsOwner){ unsubBookingsAsOwner(); unsubBookingsAsOwner=null; }
+  bookingsAsRenter = [];
+  bookingsAsOwner = [];
+
+  if(!user){
+    userProfile = null;
+    profileReady = true;
+    activeRole = null;
+    showRoleModal = false;
+    state.view = "home";
+    render();
+    return;
+  }
+
+  profileReady = false;
+  render();
+
+  try{
+    const doc = await usersCollection.doc(user.uid).get();
+    if(doc.exists){
+      userProfile = doc.data();
+    }else{
+      userProfile = { name: user.displayName || (user.email ? user.email.split("@")[0] : "Neighbour"), email: user.email || "", role: null };
+      await usersCollection.doc(user.uid).set(userProfile, { merge:true });
+    }
+    activeRole = userProfile.role || null;
+    showRoleModal = !activeRole;
+    state.view = activeRole === "host" ? "myListings" : "home";
+    profileReady = true;
+    if(activeRole) subscribeBookings(user.uid);
+    render();
+  }catch(err){
+    console.error("Could not load profile:", err);
+    profileReady = true;
+    render();
+  }
+});
+
+async function chooseRole(role){
+  if(!authUser) return;
+  try{
+    await usersCollection.doc(authUser.uid).set({ role }, { merge:true });
+    userProfile = { ...(userProfile||{}), role };
+    activeRole = role;
+    showRoleModal = false;
+    state.view = role === "host" ? "myListings" : "home";
+    subscribeBookings(authUser.uid);
+    render();
+  }catch(err){
+    console.error("Could not save role:", err);
+    alert("Couldn't save that choice — check your connection and try again.");
+  }
+}
+
+function switchRole(){
+  const next = activeRole === "host" ? "user" : "host";
+  chooseRole(next);
+}
+
+function subscribeBookings(uid){
+  unsubBookingsAsRenter = bookingsCollection.where("renterUid","==",uid).onSnapshot((snap)=>{
+    bookingsAsRenter = snap.docs.map(d=>({ id:d.id, ...d.data() }));
+    bookingsAsRenter.sort((a,b)=> (b.createdAt?.seconds||0) - (a.createdAt?.seconds||0));
+    render();
+  }, (err)=> console.error("Could not load rentals:", err));
+
+  unsubBookingsAsOwner = bookingsCollection.where("ownerUid","==",uid).onSnapshot((snap)=>{
+    bookingsAsOwner = snap.docs.map(d=>({ id:d.id, ...d.data() }));
+    bookingsAsOwner.sort((a,b)=> (b.createdAt?.seconds||0) - (a.createdAt?.seconds||0));
+    render();
+  }, (err)=> console.error("Could not load requests:", err));
+}
+
+/* ---------------- persistence (Firestore products) ---------------- */
 function loadProducts(){
-  unsubscribeProducts = productsCollection
+  productsCollection
     .orderBy("createdAt", "desc")
     .onSnapshot(
       (snapshot)=>{
@@ -146,17 +282,35 @@ function render(){
   const app = document.getElementById("app");
   let html = "";
 
-  if(!storageReady){
-    app.innerHTML = `<div class="empty">Loading your listings…</div>`;
+  if(!authReady || (authUser && !profileReady) || !storageReady){
+    app.innerHTML = `<div class="empty">Loading…</div>`;
     return;
   }
 
-  html += renderHeader();
-  if(state.view === "home") html += renderChips();
+  if(!authUser){
+    html += renderAuthHeader();
+    html += renderAuthScreen();
+    html += `<footer>Padosi is a demo peer-to-peer rental marketplace.</footer>`;
+    app.innerHTML = html;
+    attachAuthEvents();
+    return;
+  }
 
-  if(state.view === "home") html += renderGrid();
-  if(state.view === "detail") html += renderDetail();
-  if(state.view === "add") html += renderForm();
+  // route guarding by role
+  const userViews = ["home","detail","myRentals"];
+  const hostViews = ["add","myListings","requests"];
+  if(activeRole === "user" && hostViews.includes(state.view)) state.view = "home";
+  if(activeRole === "host" && userViews.includes(state.view)) state.view = "myListings";
+
+  html += renderHeader();
+  if(activeRole === "user" && state.view === "home") html += renderChips();
+
+  if(activeRole === "user" && state.view === "home") html += renderGrid();
+  if(activeRole === "user" && state.view === "detail") html += renderDetail();
+  if(activeRole === "user" && state.view === "myRentals") html += renderMyRentals();
+  if(activeRole === "host" && state.view === "add") html += renderForm();
+  if(activeRole === "host" && state.view === "myListings") html += renderMyListings();
+  if(activeRole === "host" && state.view === "requests") html += renderRequests();
 
   if(storageError){
     html += `<div class="wrap" style="text-align:center;color:var(--muted);font-size:12px;padding:8px 20px 0;">Couldn't reach the database right now — check your Firebase config and internet connection.</div>`;
@@ -164,37 +318,142 @@ function render(){
 
   html += `<footer>Padosi is a demo peer-to-peer rental marketplace.</footer>`;
 
+  if(showRoleModal) html += renderRoleModal();
+
   app.innerHTML = html;
   attachEvents();
 }
 
+/* ---------------- auth screens ---------------- */
+function renderAuthHeader(){
+  return `
+  <header>
+    <div class="wrap">
+      <div class="header-top">
+        <div class="logo">
+          <span class="logo-mark serif">Padosi</span>
+          <span class="logo-tag">rent from your neighbours</span>
+        </div>
+      </div>
+    </div>
+  </header>`;
+}
+
+function renderAuthScreen(){
+  const mode = state.authMode;
+  return `
+  <div class="auth-wrap">
+    <h1 class="form-title serif">${mode==="login" ? "Log in" : "Create your account"}</h1>
+    <p class="form-sub">${mode==="login" ? "Welcome back to Padosi." : "Join Padosi to rent or list items with your neighbours."}</p>
+
+    <button type="button" class="btn-google" id="googleBtn">${Icon.google}<span>Continue with Google</span></button>
+
+    <div class="auth-divider"><span>or</span></div>
+
+    <form id="authForm">
+      ${mode==="signup" ? `
+      <div class="field">
+        <label>Name</label>
+        <input type="text" id="fName" placeholder="Your name">
+      </div>` : ""}
+      <div class="field">
+        <label>Email</label>
+        <input type="email" id="fEmail" placeholder="you@example.com">
+      </div>
+      <div class="field">
+        <label>Password</label>
+        <input type="password" id="fPassword" placeholder="${mode==="signup" ? "At least 6 characters" : "Your password"}">
+      </div>
+
+      ${state.authError ? `<div class="form-error">${esc(state.authError)}</div>` : ""}
+
+      <button type="submit" class="btn-publish" ${state.authBusy ? "disabled" : ""}>
+        ${state.authBusy ? "Please wait…" : (mode==="login" ? "Log in" : "Sign up")}
+      </button>
+    </form>
+
+    <p class="auth-switch">
+      ${mode==="login" ? "New to Padosi?" : "Already have an account?"}
+      <a href="#" id="authSwitchLink">${mode==="login" ? "Sign up" : "Log in"}</a>
+    </p>
+  </div>`;
+}
+
+function renderRoleModal(){
+  return `
+  <div class="modal-overlay">
+    <div class="modal-card">
+      <h2 class="form-title serif">How will you use Padosi?</h2>
+      <p class="form-sub">You can switch this anytime from the menu.</p>
+      <div class="role-options">
+        <button type="button" class="role-option" id="roleUserBtn">
+          <div class="role-option-title serif">Continue as a user</div>
+          <div class="role-option-desc">Browse and rent items from people near you.</div>
+        </button>
+        <button type="button" class="role-option" id="roleHostBtn">
+          <div class="role-option-title serif">Continue as a product hoster</div>
+          <div class="role-option-desc">List your own items and manage rental requests.</div>
+        </button>
+      </div>
+    </div>
+  </div>`;
+}
+
+/* ---------------- header (logged in) ---------------- */
 function renderHeader(){
-  const leftSlot = state.view === "home"
+  const name = userProfile?.name || authUser.email || "Account";
+  const homeView = activeRole === "host" ? "myListings" : "home";
+
+  const leftSlot = (state.view===homeView || state.view==="myListings")
     ? `<button class="logo-btn" id="logoBtn">
         <div class="logo">
           <span class="logo-mark serif">Padosi</span>
           <span class="logo-tag">rent from your neighbours</span>
         </div>
       </button>`
-    : `<button class="btn-back" id="backBtn">${Icon.back} Back to browsing</button>`;
+    : `<button class="btn-back" id="backBtn">${Icon.back} Back</button>`;
 
-  const rightSlot = state.view === "add"
-    ? ""
-    : `<button class="btn-add" id="addBtn">${Icon.plus} List an item</button>`;
+  let navSlot = "";
+  if(activeRole === "user"){
+    navSlot = `
+      <button class="nav-link ${state.view==='home'?'active':''}" data-nav="home">Browse</button>
+      <button class="nav-link ${state.view==='myRentals'?'active':''}" data-nav="myRentals">My rentals</button>`;
+  }else{
+    navSlot = `
+      <button class="nav-link ${state.view==='myListings'?'active':''}" data-nav="myListings">My listings</button>
+      <button class="nav-link ${state.view==='requests'?'active':''}" data-nav="requests">Requests${bookingsAsOwner.filter(b=>b.status==='pending').length ? ` <span class="dot"></span>` : ""}</button>
+      <button class="btn-add" id="addBtn">${Icon.plus} List an item</button>`;
+  }
 
   return `
   <header>
     <div class="wrap">
       <div class="header-top">
         ${leftSlot}
-        ${rightSlot}
+        <div class="header-right">
+          <nav class="nav-links">${navSlot}</nav>
+          <div class="account-menu">
+            <button class="account-btn" id="accountBtn">
+              <span class="avatar">${esc(initials(name))}</span>
+              <span class="account-name">${esc(name)}</span>
+              ${Icon.chevDown}
+            </button>
+            ${state.menuOpen ? `
+            <div class="dropdown">
+              <div class="dropdown-role">Signed in as <strong>${activeRole === "host" ? "product hoster" : "user"}</strong></div>
+              <button class="dropdown-item" id="switchRoleBtn">${Icon.swap} Switch to ${activeRole === "host" ? "user" : "product hoster"}</button>
+              <button class="dropdown-item" id="logoutBtn">${Icon.logout} Log out</button>
+            </div>` : ""}
+          </div>
+        </div>
       </div>
+      ${activeRole === "user" && state.view==="home" ? `
       <div class="search-row">
         <div class="search-bar">
           ${Icon.search}
           <input id="searchInput" type="text" placeholder="Search for a camera, a drill, a tent…" value="${esc(state.query)}">
         </div>
-      </div>
+      </div>` : ""}
     </div>
   </header>`;
 }
@@ -221,8 +480,8 @@ function renderGrid(){
     const noneAtAll = products.length===0;
     return `<div class="empty">
       ${noneAtAll
-        ? `No listings yet. Click <strong>List an item</strong> above to add your first one.`
-        : `Nothing matches that search yet. Try another word, or list the item yourself.`}
+        ? `No listings yet. Check back soon.`
+        : `Nothing matches that search yet. Try another word.`}
     </div>`;
   }
   return `
@@ -246,6 +505,8 @@ function renderGrid(){
 function renderDetail(){
   const p = products.find(x=>x.id===state.selectedId);
   if(!p) return `<div class="empty">Item not found.</div>`;
+  const isOwn = p.ownerUid === authUser.uid;
+  const existing = bookingsAsRenter.find(b=>b.productId===p.id && b.status==="pending");
   return `
   <div class="detail">
     <div class="detail-grid">
@@ -285,7 +546,11 @@ function renderDetail(){
               <div class="meta-value">${formatDate(p.availableUntil)}</div>
             </div>
           </div>
-          <button class="btn-rent">Request to rent</button>
+          ${isOwn
+            ? `<div class="hint-text">This is your own listing.</div>`
+            : existing
+              ? `<div class="hint-text">You've already requested this item — check My rentals.</div>`
+              : `<button class="btn-rent" id="requestBtn" data-pid="${p.id}">Request to rent</button>`}
         </div>
 
         <div>
@@ -302,11 +567,97 @@ function renderDetail(){
   </div>`;
 }
 
+function renderMyRentals(){
+  if(bookingsAsRenter.length===0){
+    return `<div class="empty">You haven't requested anything yet. Browse listings to find something to rent.</div>`;
+  }
+  return `
+  <div class="detail">
+    <h1 class="form-title serif" style="margin-bottom:18px;">My rentals</h1>
+    <div class="booking-list">
+      ${bookingsAsRenter.map(b=>`
+        <div class="booking-card">
+          <div class="booking-thumb">${imgOrPlaceholder(b.productImage ? [b.productImage] : [], 0, b.productTitle)}</div>
+          <div class="booking-body">
+            <div class="booking-title serif">${esc(b.productTitle)}</div>
+            <div class="booking-meta">Hosted by ${esc(b.ownerName)} · ${Icon.rupee}${b.price}/day</div>
+          </div>
+          <div class="booking-status">
+            <span class="badge badge-${b.status}">${STATUS_LABEL[b.status]||b.status}</span>
+            ${b.status==="pending" ? `<button class="btn-mini" data-cancel="${b.id}">Cancel</button>` : ""}
+          </div>
+        </div>
+      `).join("")}
+    </div>
+  </div>`;
+}
+
+/* ---------------- host views ---------------- */
+function renderMyListings(){
+  const mine = products.filter(p=>p.ownerUid===authUser.uid);
+  if(mine.length===0){
+    return `<div class="empty">You haven't listed anything yet. Click <strong>List an item</strong> above to add your first one.</div>`;
+  }
+  return `
+  <div class="detail">
+    <h1 class="form-title serif" style="margin-bottom:18px;">My listings</h1>
+    <div class="grid">
+      ${mine.map(p=>`
+        <div class="card host-card">
+          <div class="card-img">${imgOrPlaceholder(p.images, 0, p.title)}</div>
+          <div class="card-body">
+            <div class="card-cat">${esc(p.category)}</div>
+            <div class="card-title serif">${esc(p.title)}</div>
+            <div class="card-foot">
+              <div class="card-price">${Icon.rupee}${p.price}<span>/day</span></div>
+              <div class="card-until">${Icon.calendar} till ${formatDate(p.availableUntil)}</div>
+            </div>
+            <div class="card-actions">
+              <button class="btn-mini" data-edit="${p.id}">${Icon.edit} Edit</button>
+              <button class="btn-mini btn-mini-danger" data-delete="${p.id}">${Icon.trash} Delete</button>
+            </div>
+          </div>
+        </div>
+      `).join("")}
+    </div>
+  </div>`;
+}
+
+function renderRequests(){
+  if(bookingsAsOwner.length===0){
+    return `<div class="empty">No rental requests yet. They'll show up here as soon as someone asks to rent one of your items.</div>`;
+  }
+  return `
+  <div class="detail">
+    <h1 class="form-title serif" style="margin-bottom:18px;">Requests</h1>
+    <div class="booking-list">
+      ${bookingsAsOwner.map(b=>`
+        <div class="booking-card">
+          <div class="booking-thumb">${imgOrPlaceholder(b.productImage ? [b.productImage] : [], 0, b.productTitle)}</div>
+          <div class="booking-body">
+            <div class="booking-title serif">${esc(b.productTitle)}</div>
+            <div class="booking-meta">Requested by ${esc(b.renterName)} · ${Icon.rupee}${b.price}/day</div>
+          </div>
+          <div class="booking-status">
+            <span class="badge badge-${b.status}">${STATUS_LABEL[b.status]||b.status}</span>
+            ${b.status==="pending" ? `
+            <div class="req-actions">
+              <button class="btn-mini btn-mini-approve" data-approve="${b.id}">${Icon.check} Approve</button>
+              <button class="btn-mini btn-mini-danger" data-reject="${b.id}">${Icon.x} Decline</button>
+            </div>` : ""}
+          </div>
+        </div>
+      `).join("")}
+    </div>
+  </div>`;
+}
+
 function renderForm(){
   const imgs = state.formImages;
+  const editing = state.editingId ? products.find(p=>p.id===state.editingId) : null;
   return `
   <div class="form-wrap">
-    <h1 class="form-title serif">List an item for rent</h1>
+    <h1 class="form-title serif">${editing ? "Edit your listing" : "List an item for rent"}</h1>
     <p class="form-sub">Add photos, set your price, and lay out your conditions so renters know what to expect.</p>
 
     <form id="addForm">
@@ -326,20 +677,20 @@ function renderForm(){
 
       <div class="field">
         <label>Title</label>
-        <input type="text" id="fTitle" placeholder="e.g. Canon DSLR with tripod">
+        <input type="text" id="fTitle" placeholder="e.g. Canon DSLR with tripod" value="${esc(editing?.title || "")}">
       </div>
 
       <div class="field row-2">
         <div>
           <label>Category</label>
           <select id="fCategory">
-            ${CATEGORIES.filter(c=>c!=="All").map(c=>`<option value="${esc(c)}">${esc(c)}</option>`).join("")}
+            ${CATEGORIES.filter(c=>c!=="All").map(c=>`<option value="${esc(c)}" ${editing?.category===c?"selected":""}>${esc(c)}</option>`).join("")}
           </select>
         </div>
         <div>
           <label>Condition</label>
           <select id="fCondition">
-            ${CONDITIONS.map(c=>`<option value="${esc(c)}">${esc(c)}</option>`).join("")}
+            ${CONDITIONS.map(c=>`<option value="${esc(c)}" ${editing?.condition===c?"selected":""}>${esc(c)}</option>`).join("")}
           </select>
         </div>
       </div>
@@ -347,49 +698,137 @@ function renderForm(){
       <div class="field row-2">
         <div>
           <label>Rent per day (₹)</label>
-          <input type="number" min="0" id="fPrice" placeholder="500">
+          <input type="number" min="0" id="fPrice" placeholder="500" value="${editing?.price ?? ""}">
         </div>
         <div>
           <label>Refundable deposit (₹)</label>
-          <input type="number" min="0" id="fDeposit" placeholder="2000">
+          <input type="number" min="0" id="fDeposit" placeholder="2000" value="${editing?.deposit ?? ""}">
         </div>
       </div>
 
       <div class="field row-2">
         <div>
           <label>Pickup location</label>
-          <input type="text" id="fLocation" placeholder="Area, city">
+          <input type="text" id="fLocation" placeholder="Area, city" value="${esc(editing?.location || "")}">
         </div>
         <div>
           <label>Last date to rent</label>
-          <input type="date" id="fUntil">
+          <input type="date" id="fUntil" value="${editing?.availableUntil || ""}">
         </div>
       </div>
 
       <div class="field">
         <label>Description</label>
-        <textarea id="fDescription" rows="3" placeholder="What it is, its history, what's included…"></textarea>
+        <textarea id="fDescription" rows="3" placeholder="What it is, its history, what's included…">${esc(editing?.description || "")}</textarea>
       </div>
 
       <div class="field">
         <label>Your conditions for renters</label>
-        <textarea id="fConditions" rows="3" placeholder="e.g. ID required at pickup, return clean, no outdoor use in rain…"></textarea>
+        <textarea id="fConditions" rows="3" placeholder="e.g. ID required at pickup, return clean, no outdoor use in rain…">${esc(editing?.ownerConditions || "")}</textarea>
       </div>
 
       <div id="formError" class="form-error" style="display:none;"></div>
 
-      <button type="submit" class="btn-publish">${Icon.upload} Publish listing</button>
+      <button type="submit" class="btn-publish">${Icon.upload} ${editing ? "Save changes" : "Publish listing"}</button>
     </form>
   </div>`;
 }
 
-/* ---------------- events ---------------- */
+/* ---------------- events: auth screen ---------------- */
+function attachAuthEvents(){
+  const switchLink = document.getElementById("authSwitchLink");
+  if(switchLink) switchLink.onclick = (e)=>{
+    e.preventDefault();
+    state.authMode = state.authMode==="login" ? "signup" : "login";
+    state.authError = "";
+    render();
+  };
+
+  const googleBtn = document.getElementById("googleBtn");
+  if(googleBtn) googleBtn.onclick = async ()=>{
+    state.authError = "";
+    try{
+      await auth.signInWithPopup(new firebase.auth.GoogleAuthProvider());
+    }catch(err){
+      console.error(err);
+      state.authError = err.message || "Google sign-in failed.";
+      render();
+    }
+  };
+
+  const authForm = document.getElementById("authForm");
+  if(authForm){
+    authForm.onsubmit = async (e)=>{
+      e.preventDefault();
+      const email = document.getElementById("fEmail").value.trim();
+      const password = document.getElementById("fPassword").value;
+      const nameEl = document.getElementById("fName");
+      const name = nameEl ? nameEl.value.trim() : "";
+
+      state.authError = "";
+      if(!email || !password){
+        state.authError = "Please fill in email and password.";
+        render();
+        return;
+      }
+      if(state.authMode==="signup" && !name){
+        state.authError = "Please tell us your name.";
+        render();
+        return;
+      }
+
+      state.authBusy = true;
+      render();
+      try{
+        if(state.authMode==="signup"){
+          const cred = await auth.createUserWithEmailAndPassword(email, password);
+          await cred.user.updateProfile({ displayName: name });
+          await usersCollection.doc(cred.user.uid).set({ name, email, role: null }, { merge:true });
+        }else{
+          await auth.signInWithEmailAndPassword(email, password);
+        }
+      }catch(err){
+        console.error(err);
+        state.authError = friendlyAuthError(err, state.authMode);
+        state.authBusy = false;
+        render();
+      }
+    };
+  }
+}
+
+/* ---------------- events: main app ---------------- */
 function attachEvents(){
   const logoBtn = document.getElementById("logoBtn");
-  if(logoBtn) logoBtn.onclick = goHome;
+  if(logoBtn) logoBtn.onclick = ()=>{ state.view = activeRole==="host" ? "myListings" : "home"; render(); };
+
+  const backBtn = document.getElementById("backBtn");
+  if(backBtn) backBtn.onclick = ()=>{ state.view = activeRole==="host" ? "myListings" : "home"; state.selectedId=null; render(); };
+
+  document.querySelectorAll("[data-nav]").forEach(btn=>{
+    btn.onclick = ()=>{ state.view = btn.getAttribute("data-nav"); render(); };
+  });
 
   const addBtn = document.getElementById("addBtn");
-  if(addBtn) addBtn.onclick = ()=>{ state.view="add"; state.formImages=[]; render(); };
+  if(addBtn) addBtn.onclick = ()=>{ state.view="add"; state.editingId=null; state.formImages=[]; render(); };
+
+  const accountBtn = document.getElementById("accountBtn");
+  if(accountBtn) accountBtn.onclick = (e)=>{ e.stopPropagation(); state.menuOpen = !state.menuOpen; render(); };
+
+  const switchRoleBtn = document.getElementById("switchRoleBtn");
+  if(switchRoleBtn) switchRoleBtn.onclick = ()=>{ state.menuOpen=false; switchRole(); };
+
+  const logoutBtn = document.getElementById("logoutBtn");
+  if(logoutBtn) logoutBtn.onclick = ()=>{ state.menuOpen=false; auth.signOut(); };
+
+  if(state.menuOpen){
+    document.addEventListener("click", closeMenuOnce, { once:true });
+  }
+
+  const roleUserBtn = document.getElementById("roleUserBtn");
+  if(roleUserBtn) roleUserBtn.onclick = ()=> chooseRole("user");
+  const roleHostBtn = document.getElementById("roleHostBtn");
+  if(roleHostBtn) roleHostBtn.onclick = ()=> chooseRole("host");
 
   const searchInput = document.getElementById("searchInput");
   if(searchInput){
@@ -413,11 +852,34 @@ function attachEvents(){
     btn.onclick = ()=>{ state.selectedId = btn.getAttribute("data-open"); state.view="detail"; state.activeImg=0; render(); window.scrollTo(0,0); };
   });
 
-  const backBtn = document.getElementById("backBtn");
-  if(backBtn) backBtn.onclick = goHome;
-
   document.querySelectorAll("[data-thumb]").forEach(t=>{
     t.onclick = ()=>{ state.activeImg = Number(t.getAttribute("data-thumb")); render(); };
+  });
+
+  const requestBtn = document.getElementById("requestBtn");
+  if(requestBtn) requestBtn.onclick = ()=> requestToRent(requestBtn.getAttribute("data-pid"));
+
+  document.querySelectorAll("[data-cancel]").forEach(btn=>{
+    btn.onclick = ()=> cancelBooking(btn.getAttribute("data-cancel"));
+  });
+  document.querySelectorAll("[data-approve]").forEach(btn=>{
+    btn.onclick = ()=> updateBookingStatus(btn.getAttribute("data-approve"), "approved");
+  });
+  document.querySelectorAll("[data-reject]").forEach(btn=>{
+    btn.onclick = ()=> updateBookingStatus(btn.getAttribute("data-reject"), "rejected");
+  });
+
+  document.querySelectorAll("[data-edit]").forEach(btn=>{
+    btn.onclick = ()=>{
+      state.editingId = btn.getAttribute("data-edit");
+      const p = products.find(x=>x.id===state.editingId);
+      state.formImages = p ? p.images.slice() : [];
+      state.view = "add";
+      render();
+    };
+  });
+  document.querySelectorAll("[data-delete]").forEach(btn=>{
+    btn.onclick = ()=> deleteListing(btn.getAttribute("data-delete"));
   });
 
   const imgAddBtn = document.getElementById("imgAddBtn");
@@ -462,7 +924,7 @@ function attachEvents(){
         return;
       }
 
-      const newProduct = {
+      const productData = {
         title,
         category: document.getElementById("fCategory").value,
         price: Number(price),
@@ -471,35 +933,82 @@ function attachEvents(){
         location: document.getElementById("fLocation").value.trim() || "Location not specified",
         availableUntil: until,
         description: document.getElementById("fDescription").value.trim() || "No description provided.",
-        ownerName: "You",
+        ownerUid: authUser.uid,
+        ownerName: userProfile?.name || authUser.email || "Host",
         ownerConditions: document.getElementById("fConditions").value.trim() || "No special conditions specified.",
-        images: state.formImages.slice(),
-        createdAt: firebase.firestore.FieldValue.serverTimestamp()
+        images: state.formImages.slice()
       };
 
       errorEl.style.display = "none";
       submitBtn.disabled = true;
-      submitBtn.textContent = "Publishing…";
+      submitBtn.textContent = "Saving…";
 
       try{
-        await productsCollection.add(newProduct);
-        goHome();
+        if(state.editingId){
+          await productsCollection.doc(state.editingId).update(productData);
+        }else{
+          await productsCollection.add({ ...productData, createdAt: firebase.firestore.FieldValue.serverTimestamp() });
+        }
+        state.editingId = null;
+        state.view = "myListings";
+        render();
       }catch(err){
-        console.error("Could not publish listing:", err);
-        errorEl.textContent = "Couldn't publish this listing — check your Firebase config/rules, or try fewer or smaller photos.";
+        console.error("Could not save listing:", err);
+        errorEl.textContent = "Couldn't save this listing — check your Firebase config/rules, or try fewer or smaller photos.";
         errorEl.style.display = "block";
       }finally{
         submitBtn.disabled = false;
-        submitBtn.innerHTML = `${Icon.upload} Publish listing`;
+        submitBtn.innerHTML = `${Icon.upload} ${state.editingId ? "Save changes" : "Publish listing"}`;
       }
     };
   }
 }
 
-function goHome(){
-  state.view = "home";
-  state.selectedId = null;
+function closeMenuOnce(){
+  state.menuOpen = false;
   render();
+}
+
+/* ---------------- booking actions ---------------- */
+async function requestToRent(productId){
+  const p = products.find(x=>x.id===productId);
+  if(!p || !authUser) return;
+  try{
+    await bookingsCollection.add({
+      productId: p.id,
+      productTitle: p.title,
+      productImage: p.images && p.images[0] ? p.images[0] : null,
+      price: p.price,
+      renterUid: authUser.uid,
+      renterName: userProfile?.name || authUser.email || "Renter",
+      ownerUid: p.ownerUid,
+      ownerName: p.ownerName,
+      status: "pending",
+      createdAt: firebase.firestore.FieldValue.serverTimestamp()
+    });
+    state.view = "myRentals";
+    render();
+  }catch(err){
+    console.error("Could not send request:", err);
+    alert("Couldn't send that request — please try again.");
+  }
+}
+
+async function cancelBooking(id){
+  if(!confirm("Cancel this rental request?")) return;
+  try{ await bookingsCollection.doc(id).delete(); }
+  catch(err){ console.error(err); alert("Couldn't cancel — please try again."); }
+}
+
+async function updateBookingStatus(id, status){
+  try{ await bookingsCollection.doc(id).update({ status }); }
+  catch(err){ console.error(err); alert("Couldn't update that request — please try again."); }
+}
+
+async function deleteListing(id){
+  if(!confirm("Delete this listing? This can't be undone.")) return;
+  try{ await productsCollection.doc(id).delete(); }
+  catch(err){ console.error(err); alert("Couldn't delete — please try again."); }
 }
 
 loadProducts();

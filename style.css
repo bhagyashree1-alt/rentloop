@@ -9,6 +9,7 @@
   --muted:#5C6B64;
   --card:#FFFFFF;
   --tint:#EFEDE0;
+  --danger:#B23A2F;
 }
 *{box-sizing:border-box;}
 body{
@@ -38,12 +39,24 @@ header{
   justify-content:space-between;
   gap:16px;
   padding-top:20px;
+  flex-wrap:wrap;
 }
 .logo-btn{background:none;border:none;cursor:pointer;padding:0;text-align:left;}
 .logo{display:flex;align-items:baseline;gap:8px;}
 .logo-mark{font-size:24px;font-weight:600;color:var(--ink);}
 .logo-tag{font-size:12px;color:var(--muted);}
 @media (max-width:520px){.logo-tag{display:none;}}
+
+.header-right{display:flex;align-items:center;gap:18px;flex-wrap:wrap;}
+
+.nav-links{display:flex;align-items:center;gap:4px;}
+.nav-link{
+  background:none;border:none;cursor:pointer;font-size:14px;color:var(--muted);
+  padding:8px 12px;border-radius:999px;font-weight:500;position:relative;
+}
+.nav-link:hover{color:var(--ink);}
+.nav-link.active{background:var(--tint);color:var(--forest-dark);}
+.nav-link .dot{display:inline-block;width:6px;height:6px;border-radius:50%;background:var(--amber);margin-left:2px;vertical-align:middle;}
 
 .btn-add{
   display:flex;align-items:center;gap:6px;
@@ -62,6 +75,28 @@ header{
   flex-shrink:0;transition:opacity .15s;
 }
 .btn-back:hover{opacity:.9;}
+
+/* ---------- account menu ---------- */
+.account-menu{position:relative;}
+.account-btn{
+  display:flex;align-items:center;gap:8px;background:var(--card);border:1px solid var(--line);
+  border-radius:999px;padding:6px 12px 6px 6px;cursor:pointer;color:var(--ink);font-size:13px;
+}
+.avatar{
+  width:26px;height:26px;border-radius:50%;background:var(--forest);color:#fff;font-size:11px;font-weight:600;
+  display:flex;align-items:center;justify-content:center;flex-shrink:0;
+}
+.account-name{max-width:120px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.dropdown{
+  position:absolute;top:calc(100% + 8px);right:0;background:var(--card);border:1px solid var(--line);
+  border-radius:10px;box-shadow:0 6px 20px rgba(0,0,0,.08);min-width:220px;padding:8px;z-index:30;
+}
+.dropdown-role{font-size:12px;color:var(--muted);padding:6px 10px 10px;border-bottom:1px solid var(--line);margin-bottom:6px;}
+.dropdown-item{
+  display:flex;align-items:center;gap:8px;width:100%;background:none;border:none;text-align:left;
+  padding:9px 10px;border-radius:6px;cursor:pointer;font-size:13px;color:var(--ink);
+}
+.dropdown-item:hover{background:var(--tint);}
 
 .search-row{margin:20px 0 16px;}
 .search-bar{
@@ -105,6 +140,7 @@ header{
   transition:box-shadow .2s;text-align:left;
 }
 .card:hover{box-shadow:0 2px 10px rgba(0,0,0,.06);}
+.host-card{cursor:default;}
 .card-img{aspect-ratio:4/3;overflow:hidden;background:#EFEDE4;}
 .card-img img{width:100%;height:100%;object-fit:cover;transition:transform .3s;}
 .card:hover .card-img img{transform:scale(1.04);}
@@ -124,6 +160,7 @@ header{
 .card-price{color:var(--forest-dark);font-weight:600;font-size:14px;display:flex;align-items:baseline;gap:2px;}
 .card-price span{color:var(--muted);font-weight:400;font-size:12px;}
 .card-until{color:var(--muted);font-size:11px;display:flex;align-items:center;gap:4px;white-space:nowrap;}
+.card-actions{display:flex;gap:8px;margin-top:12px;}
 
 /* ---------- detail ---------- */
 .detail{max-width:1100px;margin:0 auto;padding:20px;}
@@ -164,6 +201,7 @@ header{
   display:flex;align-items:center;justify-content:center;gap:8px;transition:background .15s;
 }
 .btn-rent:hover{background:var(--amber-dark);}
+.hint-text{margin-top:20px;font-size:13px;color:var(--muted);text-align:center;}
 
 .about-title{font-size:16px;font-weight:500;margin:0 0 6px;}
 .about-text{font-size:14px;color:var(--muted);line-height:1.6;margin:0 0 20px;}
@@ -172,6 +210,37 @@ header{
 .owner-title{font-size:14px;font-weight:500;color:var(--forest-dark);margin:0 0 6px;}
 .owner-text{font-size:14px;line-height:1.6;margin:0;}
 
+/* ---------- bookings ---------- */
+.booking-list{display:flex;flex-direction:column;gap:12px;}
+.booking-card{
+  display:flex;align-items:center;gap:14px;border:1px solid var(--line);background:var(--card);
+  border-radius:10px;padding:12px;flex-wrap:wrap;
+}
+.booking-thumb{width:64px;height:64px;border-radius:8px;overflow:hidden;flex-shrink:0;background:#EFEDE4;}
+.booking-thumb img{width:100%;height:100%;object-fit:cover;}
+.booking-body{flex:1;min-width:160px;}
+.booking-title{font-size:15px;font-weight:500;}
+.booking-meta{font-size:12px;color:var(--muted);margin-top:2px;}
+.booking-status{display:flex;flex-direction:column;align-items:flex-end;gap:6px;}
+.req-actions{display:flex;gap:6px;}
+
+.badge{font-size:11px;font-weight:600;padding:4px 10px;border-radius:999px;white-space:nowrap;}
+.badge-pending{background:#FBEAD6;color:var(--amber-dark);}
+.badge-approved{background:#E1EEE7;color:var(--forest-dark);}
+.badge-rejected{background:#F6DEDB;color:var(--danger);}
+.badge-completed{background:var(--tint);color:var(--muted);}
+
+.btn-mini{
+  display:flex;align-items:center;gap:5px;font-size:12px;font-weight:500;
+  border:1px solid var(--line);background:#fff;color:var(--ink);
+  padding:7px 12px;border-radius:999px;cursor:pointer;
+}
+.btn-mini:hover{border-color:#9aa39c;}
+.btn-mini-danger{color:var(--danger);border-color:#EAC7C1;}
+.btn-mini-danger:hover{border-color:var(--danger);}
+.btn-mini-approve{color:var(--forest-dark);border-color:#B9D2C6;}
+.btn-mini-approve:hover{border-color:var(--forest);}
+
 /* ---------- form ---------- */
 .form-wrap{max-width:640px;margin:0 auto;padding:20px;}
 .form-title{font-size:24px;font-weight:500;margin:0 0 6px;}
@@ -179,6 +248,7 @@ header{
 .field{margin-bottom:20px;}
 .field label{display:block;font-size:14px;font-weight:500;margin-bottom:6px;}
 .field input[type=text], .field input[type=number], .field input[type=date],
+.field input[type=email], .field input[type=password],
 .field select, .field textarea{
   width:100%;border:1px solid var(--line);border-radius:8px;padding:11px 12px;
   font-size:14px;color:var(--ink);background:#fff;outline:none;
@@ -202,7 +272,7 @@ header{
 }
 .img-add:hover{border-color:#9aa39c;}
 
-.form-error{color:#B23A2F;font-size:14px;margin:-8px 0 16px;}
+.form-error{color:var(--danger);font-size:14px;margin:-8px 0 16px;}
 
 .btn-publish{
   width:100%;background:var(--forest);color:#fff;border:none;font-size:14px;font-weight:500;
@@ -210,6 +280,35 @@ header{
   gap:8px;transition:opacity .15s;
 }
 .btn-publish:hover{opacity:.9;}
+.btn-publish:disabled{opacity:.6;cursor:default;}
+
+/* ---------- auth screen ---------- */
+.auth-wrap{max-width:400px;margin:40px auto;padding:20px;}
+.btn-google{
+  width:100%;display:flex;align-items:center;justify-content:center;gap:10px;
+  background:#fff;border:1px solid var(--line);border-radius:999px;padding:12px;
+  font-size:14px;font-weight:500;color:var(--ink);cursor:pointer;
+}
+.btn-google:hover{border-color:#9aa39c;}
+.auth-divider{display:flex;align-items:center;gap:12px;margin:20px 0;color:var(--muted);font-size:12px;}
+.auth-divider::before,.auth-divider::after{content:"";flex:1;height:1px;background:var(--line);}
+.auth-switch{text-align:center;font-size:13px;color:var(--muted);margin-top:18px;}
+.auth-switch a{color:var(--forest-dark);font-weight:500;}
+
+/* ---------- role modal ---------- */
+.modal-overlay{
+  position:fixed;inset:0;background:rgba(24,36,32,.5);
+  display:flex;align-items:center;justify-content:center;padding:20px;z-index:50;
+}
+.modal-card{background:var(--paper);border-radius:14px;max-width:460px;width:100%;padding:28px;}
+.role-options{display:flex;flex-direction:column;gap:12px;margin-top:8px;}
+.role-option{
+  text-align:left;background:var(--card);border:1px solid var(--line);border-radius:10px;
+  padding:16px;cursor:pointer;transition:border-color .15s;
+}
+.role-option:hover{border-color:var(--forest);}
+.role-option-title{font-size:16px;font-weight:500;margin-bottom:4px;}
+.role-option-desc{font-size:13px;color:var(--muted);}
 
 footer{
   max-width:1100px;margin:24px auto 0;padding:28px 20px;text-align:center;
