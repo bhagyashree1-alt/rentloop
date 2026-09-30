@@ -1008,8 +1008,7 @@ async function updateBookingStatus(id, status){
 async function deleteListing(id){
   if(!confirm("Delete this listing? This can't be undone.")) return;
   try{ await productsCollection.doc(id).delete(); }
-  catch(err){ console.error(err); alert("Couldn't delete — please try again."); }
-}
+  catch(err){ console.error(err); alert("Couldn't delete — please try again."); }}
 
 loadProducts();
 </script>
