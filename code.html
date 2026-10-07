@@ -72,6 +72,9 @@ const Icon = {
   trash: `<svg class="icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6M14 11v6"/></svg>`,
   check: `<svg class="icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>`,
   x: `<svg class="icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>`,
+  phone: `<svg class="icon" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72c.127.96.361 1.903.7 2.81a2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0 1 22 16.92z"/></svg>`,
+  eye: `<svg class="icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>`,
+  eyeOff: `<svg class="icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17.94 17.94A10.94 10.94 0 0 1 12 20c-7 0-11-8-11-8a18.5 18.5 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"/><line x1="1" y1="1" x2="23" y2="23"/></svg>`,
   google: `<svg width="17" height="17" viewBox="0 0 48 48"><path fill="#FFC107" d="M43.6 20.5H42V20H24v8h11.3C33.7 32.6 29.3 36 24 36c-6.6 0-12-5.4-12-12s5.4-12 12-12c3.1 0 5.8 1.1 8 3l6-6C34.6 5.1 29.6 3 24 3 12.4 3 3 12.4 3 24s9.4 21 21 21 21-9.4 21-21c0-1.4-.1-2.5-.4-3.5z"/><path fill="#FF3D00" d="M6.3 14.7l6.6 4.8C14.5 15.8 18.9 13 24 13c3.1 0 5.8 1.1 8 3l6-6C34.6 5.1 29.6 3 24 3 16.3 3 9.7 7.3 6.3 14.7z"/><path fill="#4CAF50" d="M24 45c5.5 0 10.4-1.9 14.3-5.1l-6.6-5.6C29.6 36 26.9 37 24 37c-5.3 0-9.7-3.4-11.3-8.1l-6.6 5C9.6 40.6 16.2 45 24 45z"/><path fill="#1976D2" d="M43.6 20.5H42V20H24v8h11.3c-.8 2.3-2.3 4.3-4.2 5.7l6.6 5.6C41.4 36.6 45 30.9 45 24c0-1.4-.1-2.5-.4-3.5z"/></svg>`,
 };
 
@@ -90,6 +93,8 @@ let userProfile = null;  // {name, email, role}
 let profileReady = false;
 let activeRole = null;   // "user" | "host"
 let showRoleModal = false;
+let showPhoneModal = false;
+let phoneModalProductId = null;
 
 let bookingsAsRenter = [];
 let bookingsAsOwner = [];
@@ -106,10 +111,16 @@ let state = {
   activeImg: 0,
   formImages: [],
   authMode: "login",     // login | signup
+  authChannel: "password", // password | phone
+  phoneStep: "enter",      // enter | verify
+  phoneNumber: "",
   authError: "",
   authBusy: false,
   menuOpen: false
 };
+
+let recaptchaVerifier = null;
+let phoneConfirmation = null;
 
 function formatDate(d){
   if(!d) return "—";
@@ -143,6 +154,18 @@ function friendlyAuthError(err, mode){
   }
   if(code === "auth/too-many-requests"){
     return "Too many attempts — please wait a moment and try again.";
+  }
+  if(code === "auth/invalid-phone-number"){
+    return "That doesn't look like a valid phone number. Include the country code, e.g. +91XXXXXXXXXX.";
+  }
+  if(code === "auth/invalid-verification-code"){
+    return "That code isn't right. Double-check the SMS and try again.";
+  }
+  if(code === "auth/code-expired"){
+    return "That code has expired — request a new one.";
+  }
+  if(code === "auth/missing-phone-number"){
+    return "Please enter your phone number.";
   }
   return err.message || "Something went wrong.";
 }
@@ -191,6 +214,11 @@ auth.onAuthStateChanged(async (user)=>{
     activeRole = null;
     showRoleModal = false;
     state.view = "home";
+    state.authChannel = "password";
+    state.phoneStep = "enter";
+    state.phoneNumber = "";
+    phoneConfirmation = null;
+    teardownRecaptcha();
     render();
     return;
   }
@@ -203,7 +231,7 @@ auth.onAuthStateChanged(async (user)=>{
     if(doc.exists){
       userProfile = doc.data();
     }else{
-      userProfile = { name: user.displayName || (user.email ? user.email.split("@")[0] : "Neighbour"), email: user.email || "", role: null };
+      userProfile = { name: user.displayName || (user.email ? user.email.split("@")[0] : (user.phoneNumber || "Neighbour")), email: user.email || "", phone: user.phoneNumber || "", role: null };
       await usersCollection.doc(user.uid).set(userProfile, { merge:true });
     }
     activeRole = userProfile.role || null;
@@ -319,6 +347,7 @@ function render(){
   html += `<footer>Padosi is a demo peer-to-peer rental marketplace.</footer>`;
 
   if(showRoleModal) html += renderRoleModal();
+  if(showPhoneModal) html += renderPhoneModal();
 
   app.innerHTML = html;
   attachEvents();
@@ -341,13 +370,17 @@ function renderAuthHeader(){
 
 function renderAuthScreen(){
   const mode = state.authMode;
+  const channel = state.authChannel;
+
   return `
   <div class="auth-wrap">
-    <h1 class="form-title serif">${mode==="login" ? "Log in" : "Create your account"}</h1>
-    <p class="form-sub">${mode==="login" ? "Welcome back to Padosi." : "Join Padosi to rent or list items with your neighbours."}</p>
+    <h1 class="form-title serif">${channel==="phone" ? (state.phoneStep==="verify" ? "Enter the code" : "Continue with phone") : (mode==="login" ? "Log in" : "Create your account")}</h1>
+    <p class="form-sub">${channel==="phone"
+      ? (state.phoneStep==="verify" ? `We texted a code to ${esc(state.phoneNumber||"")}.` : "We'll text you a one-time code — no password needed.")
+      : (mode==="login" ? "Welcome back to Padosi." : "Join Padosi to rent or list items with your neighbours.")}</p>
 
+    ${channel==="password" ? `
     <button type="button" class="btn-google" id="googleBtn">${Icon.google}<span>Continue with Google</span></button>
-
     <div class="auth-divider"><span>or</span></div>
 
     <form id="authForm">
@@ -362,7 +395,10 @@ function renderAuthScreen(){
       </div>
       <div class="field">
         <label>Password</label>
-        <input type="password" id="fPassword" placeholder="${mode==="signup" ? "At least 6 characters" : "Your password"}">
+        <div class="password-wrap">
+          <input type="password" id="fPassword" placeholder="${mode==="signup" ? "At least 6 characters" : "Your password"}">
+          <button type="button" class="toggle-password" id="togglePassword" aria-label="Show password">${Icon.eye}</button>
+        </div>
       </div>
 
       ${state.authError ? `<div class="form-error">${esc(state.authError)}</div>` : ""}
@@ -376,6 +412,35 @@ function renderAuthScreen(){
       ${mode==="login" ? "New to Padosi?" : "Already have an account?"}
       <a href="#" id="authSwitchLink">${mode==="login" ? "Sign up" : "Log in"}</a>
     </p>
+    <p class="auth-switch"><a href="#" id="usePhoneLink">Use your phone number instead</a></p>
+    ` : `
+    <form id="phoneForm">
+      ${state.phoneStep==="enter" ? `
+      <div class="field">
+        <label>Phone number</label>
+        <input type="tel" id="fPhone" placeholder="+91 XXXXXXXXXX" value="${esc(state.phoneNumber||"")}">
+      </div>
+      <p class="form-sub" style="margin:-12px 0 16px;">Include your country code, starting with +.</p>
+      ` : `
+      <div class="field">
+        <label>Verification code</label>
+        <input type="text" inputmode="numeric" id="fOtp" placeholder="6-digit code">
+      </div>
+      `}
+
+      ${state.authError ? `<div class="form-error">${esc(state.authError)}</div>` : ""}
+
+      <button type="submit" class="btn-publish" ${state.authBusy ? "disabled" : ""}>
+        ${state.authBusy ? "Please wait…" : (state.phoneStep==="enter" ? "Send code" : "Verify & continue")}
+      </button>
+    </form>
+    <div id="recaptcha-container"></div>
+
+    <p class="auth-switch">
+      ${state.phoneStep==="verify" ? `<a href="#" id="changeNumberLink">Use a different number</a>` : ""}
+    </p>
+    <p class="auth-switch"><a href="#" id="useEmailLink">Use email instead</a></p>
+    `}
   </div>`;
 }
 
@@ -399,9 +464,26 @@ function renderRoleModal(){
   </div>`;
 }
 
+function renderPhoneModal(){
+  return `
+  <div class="modal-overlay">
+    <div class="modal-card">
+      <h2 class="form-title serif">Add a contact number</h2>
+      <p class="form-sub">The host will only see this once they approve your request.</p>
+      <div class="field">
+        <label>Phone number</label>
+        <input type="tel" id="fRequestPhone" placeholder="+91 XXXXXXXXXX" value="${esc(userProfile?.phone || "")}">
+      </div>
+      <div id="phoneModalError" class="form-error" style="display:none;"></div>
+      <button type="button" class="btn-publish" id="confirmPhoneBtn">Send request</button>
+      <button type="button" class="btn-mini" id="cancelPhoneBtn" style="width:100%;justify-content:center;margin-top:10px;">Cancel</button>
+    </div>
+  </div>`;
+}
+
 /* ---------------- header (logged in) ---------------- */
 function renderHeader(){
-  const name = userProfile?.name || authUser.email || "Account";
+  const name = userProfile?.name || authUser.email || authUser.phoneNumber || "Account";
   const homeView = activeRole === "host" ? "myListings" : "home";
 
   const leftSlot = (state.view===homeView || state.view==="myListings")
@@ -637,6 +719,9 @@ function renderRequests(){
           <div class="booking-body">
             <div class="booking-title serif">${esc(b.productTitle)}</div>
             <div class="booking-meta">Requested by ${esc(b.renterName)} · ${Icon.rupee}${b.price}/day</div>
+            ${b.status==="approved"
+              ? `<div class="booking-phone">${Icon.phone} ${b.renterPhone ? esc(b.renterPhone) : "No phone number on file"}</div>`
+              : `<div class="booking-meta-muted">Contact number unlocks once you approve</div>`}
           </div>
           <div class="booking-status">
             <span class="badge badge-${b.status}">${STATUS_LABEL[b.status]||b.status}</span>
@@ -795,6 +880,103 @@ function attachAuthEvents(){
       }
     };
   }
+
+  const togglePassword = document.getElementById("togglePassword");
+  if(togglePassword){
+    togglePassword.onclick = ()=>{
+      const input = document.getElementById("fPassword");
+      const showing = input.type === "text";
+      input.type = showing ? "password" : "text";
+      togglePassword.innerHTML = showing ? Icon.eye : Icon.eyeOff;
+      togglePassword.setAttribute("aria-label", showing ? "Show password" : "Hide password");
+    };
+  }
+
+  const usePhoneLink = document.getElementById("usePhoneLink");
+  if(usePhoneLink) usePhoneLink.onclick = (e)=>{
+    e.preventDefault();
+    state.authChannel = "phone";
+    state.phoneStep = "enter";
+    state.authError = "";
+    render();
+  };
+  const useEmailLink = document.getElementById("useEmailLink");
+  if(useEmailLink) useEmailLink.onclick = (e)=>{
+    e.preventDefault();
+    teardownRecaptcha();
+    state.authChannel = "password";
+    state.authError = "";
+    render();
+  };
+  const changeNumberLink = document.getElementById("changeNumberLink");
+  if(changeNumberLink) changeNumberLink.onclick = (e)=>{
+    e.preventDefault();
+    teardownRecaptcha();
+    state.phoneStep = "enter";
+    state.authError = "";
+    phoneConfirmation = null;
+    render();
+  };
+
+  const phoneForm = document.getElementById("phoneForm");
+  if(phoneForm){
+    phoneForm.onsubmit = async (e)=>{
+      e.preventDefault();
+      state.authError = "";
+
+      if(state.phoneStep === "enter"){
+        const phone = document.getElementById("fPhone").value.trim();
+        if(!phone || !phone.startsWith("+")){
+          state.authError = "Enter your number with the country code, starting with +, e.g. +91XXXXXXXXXX.";
+          render();
+          return;
+        }
+        state.phoneNumber = phone;
+        state.authBusy = true;
+        render();
+        try{
+          if(!recaptchaVerifier){
+            recaptchaVerifier = new firebase.auth.RecaptchaVerifier("recaptcha-container", { size: "invisible" }, auth);
+          }
+          phoneConfirmation = await auth.signInWithPhoneNumber(phone, recaptchaVerifier);
+          state.phoneStep = "verify";
+          state.authBusy = false;
+          render();
+        }catch(err){
+          console.error(err);
+          state.authError = friendlyAuthError(err, "phone");
+          state.authBusy = false;
+          teardownRecaptcha();
+          render();
+        }
+      }else{
+        const otp = document.getElementById("fOtp").value.trim();
+        if(!otp){
+          state.authError = "Enter the code you received.";
+          render();
+          return;
+        }
+        state.authBusy = true;
+        render();
+        try{
+          await phoneConfirmation.confirm(otp);
+          // onAuthStateChanged takes over from here
+        }catch(err){
+          console.error(err);
+          state.authError = friendlyAuthError(err, "phone");
+          state.authBusy = false;
+          render();
+        }
+      }
+    };
+  }
+}
+
+function teardownRecaptcha(){
+  if(recaptchaVerifier){
+    try{ recaptchaVerifier.clear(); }catch(e){}
+    recaptchaVerifier = null;
+  }
 }
 
 /* ---------------- events: main app ---------------- */
@@ -857,7 +1039,50 @@ function attachEvents(){
   });
 
   const requestBtn = document.getElementById("requestBtn");
-  if(requestBtn) requestBtn.onclick = ()=> requestToRent(requestBtn.getAttribute("data-pid"));
+  if(requestBtn) requestBtn.onclick = ()=>{
+    const pid = requestBtn.getAttribute("data-pid");
+    if(userProfile?.phone){
+      requestToRent(pid, userProfile.phone);
+    }else{
+      phoneModalProductId = pid;
+      showPhoneModal = true;
+      render();
+    }
+  };
+
+  const confirmPhoneBtn = document.getElementById("confirmPhoneBtn");
+  if(confirmPhoneBtn) confirmPhoneBtn.onclick = async ()=>{
+    const phone = document.getElementById("fRequestPhone").value.trim();
+    const errEl = document.getElementById("phoneModalError");
+    if(!phone || !phone.startsWith("+")){
+      errEl.textContent = "Enter your number with the country code, starting with +.";
+      errEl.style.display = "block";
+      return;
+    }
+    confirmPhoneBtn.disabled = true;
+    confirmPhoneBtn.textContent = "Please wait…";
+    try{
+      await usersCollection.doc(authUser.uid).set({ phone }, { merge:true });
+      userProfile = { ...(userProfile||{}), phone };
+      const pid = phoneModalProductId;
+      showPhoneModal = false;
+      phoneModalProductId = null;
+      await requestToRent(pid, phone);
+    }catch(err){
+      console.error(err);
+      errEl.textContent = "Couldn't save that number — please try again.";
+      errEl.style.display = "block";
+      confirmPhoneBtn.disabled = false;
+      confirmPhoneBtn.textContent = "Send request";
+    }
+  };
+
+  const cancelPhoneBtn = document.getElementById("cancelPhoneBtn");
+  if(cancelPhoneBtn) cancelPhoneBtn.onclick = ()=>{
+    showPhoneModal = false;
+    phoneModalProductId = null;
+    render();
+  };
 
   document.querySelectorAll("[data-cancel]").forEach(btn=>{
     btn.onclick = ()=> cancelBooking(btn.getAttribute("data-cancel"));
@@ -970,7 +1195,7 @@ function closeMenuOnce(){
 }
 
 /* ---------------- booking actions ---------------- */
-async function requestToRent(productId){
+async function requestToRent(productId, renterPhone){
   const p = products.find(x=>x.id===productId);
   if(!p || !authUser) return;
   try{
@@ -981,6 +1206,7 @@ async function requestToRent(productId){
       price: p.price,
       renterUid: authUser.uid,
       renterName: userProfile?.name || authUser.email || "Renter",
+      renterPhone: renterPhone || userProfile?.phone || "",
       ownerUid: p.ownerUid,
       ownerName: p.ownerName,
       status: "pending",
