@@ -95,6 +95,8 @@ let activeRole = null;   // "user" | "host"
 let showRoleModal = false;
 let showPhoneModal = false;
 let phoneModalProductId = null;
+let showHostPhoneModal = false;   // NEW: host adds number when approving
+let hostPhoneBookingId = null;    // NEW
 
 let bookingsAsRenter = [];
 let bookingsAsOwner = [];
@@ -213,6 +215,8 @@ auth.onAuthStateChanged(async (user)=>{
     profileReady = true;
     activeRole = null;
     showRoleModal = false;
+    showPhoneModal = false;
+    showHostPhoneModal = false;
     state.view = "home";
     state.authChannel = "password";
     state.phoneStep = "enter";
@@ -269,6 +273,9 @@ function switchRole(){
 }
 
 function subscribeBookings(uid){
+  if(unsubBookingsAsRenter){ unsubBookingsAsRenter(); unsubBookingsAsRenter=null; }
+  if(unsubBookingsAsOwner){ unsubBookingsAsOwner(); unsubBookingsAsOwner=null; }
+
   unsubBookingsAsRenter = bookingsCollection.where("renterUid","==",uid).onSnapshot((snap)=>{
     bookingsAsRenter = snap.docs.map(d=>({ id:d.id, ...d.data() }));
     bookingsAsRenter.sort((a,b)=> (b.createdAt?.seconds||0) - (a.createdAt?.seconds||0));
@@ -348,6 +355,7 @@ function render(){
 
   if(showRoleModal) html += renderRoleModal();
   if(showPhoneModal) html += renderPhoneModal();
+  if(showHostPhoneModal) html += renderHostPhoneModal();
 
   app.innerHTML = html;
   attachEvents();
@@ -477,6 +485,24 @@ function renderPhoneModal(){
       <div id="phoneModalError" class="form-error" style="display:none;"></div>
       <button type="button" class="btn-publish" id="confirmPhoneBtn">Send request</button>
       <button type="button" class="btn-mini" id="cancelPhoneBtn" style="width:100%;justify-content:center;margin-top:10px;">Cancel</button>
+    </div>
+  </div>`;
+}
+
+/* NEW: host adds their number when approving */
+function renderHostPhoneModal(){
+  return `
+  <div class="modal-overlay">
+    <div class="modal-card">
+      <h2 class="form-title serif">Add your contact number</h2>
+      <p class="form-sub">The renter will see this once you approve their request.</p>
+      <div class="field">
+        <label>Phone number</label>
+        <input type="tel" id="fHostPhone" placeholder="+91 XXXXXXXXXX" value="${esc(userProfile?.phone || "")}">
+      </div>
+      <div id="hostPhoneError" class="form-error" style="display:none;"></div>
+      <button type="button" class="btn-publish" id="confirmHostPhoneBtn">Approve request</button>
+      <button type="button" class="btn-mini" id="cancelHostPhoneBtn" style="width:100%;justify-content:center;margin-top:10px;">Cancel</button>
     </div>
   </div>`;
 }
@@ -663,6 +689,9 @@ function renderMyRentals(){
           <div class="booking-body">
             <div class="booking-title serif">${esc(b.productTitle)}</div>
             <div class="booking-meta">Hosted by ${esc(b.ownerName)} · ${Icon.rupee}${b.price}/day</div>
+            ${b.status==="approved"
+              ? `<div class="booking-phone">${Icon.phone} ${b.ownerPhone ? esc(b.ownerPhone) : "No phone number on file"}</div>`
+              : `<div class="booking-meta-muted">Host's contact number unlocks once they approve</div>`}
           </div>
           <div class="booking-status">
             <span class="badge badge-${b.status}">${STATUS_LABEL[b.status]||b.status}</span>
@@ -1084,11 +1113,47 @@ function attachEvents(){
     render();
   };
 
+  /* NEW: host phone modal handlers */
+  const confirmHostPhoneBtn = document.getElementById("confirmHostPhoneBtn");
+  if(confirmHostPhoneBtn) confirmHostPhoneBtn.onclick = async ()=>{
+    const phone = document.getElementById("fHostPhone").value.trim();
+    const errEl = document.getElementById("hostPhoneError");
+    if(!phone || !phone.startsWith("+")){
+      errEl.textContent = "Enter your number with the country code, starting with +.";
+      errEl.style.display = "block";
+      return;
+    }
+    confirmHostPhoneBtn.disabled = true;
+    confirmHostPhoneBtn.textContent = "Please wait…";
+    try{
+      await usersCollection.doc(authUser.uid).set({ phone }, { merge:true });
+      userProfile = { ...(userProfile||{}), phone };
+      const id = hostPhoneBookingId;
+      showHostPhoneModal = false;
+      hostPhoneBookingId = null;
+      await bookingsCollection.doc(id).update({ status:"approved", ownerPhone: phone });
+      render();
+    }catch(err){
+      console.error(err);
+      errEl.textContent = "Couldn't save that number — please try again.";
+      errEl.style.display = "block";
+      confirmHostPhoneBtn.disabled = false;
+      confirmHostPhoneBtn.textContent = "Approve request";
+    }
+  };
+
+  const cancelHostPhoneBtn = document.getElementById("cancelHostPhoneBtn");
+  if(cancelHostPhoneBtn) cancelHostPhoneBtn.onclick = ()=>{
+    showHostPhoneModal = false;
+    hostPhoneBookingId = null;
+    render();
+  };
+
   document.querySelectorAll("[data-cancel]").forEach(btn=>{
     btn.onclick = ()=> cancelBooking(btn.getAttribute("data-cancel"));
   });
   document.querySelectorAll("[data-approve]").forEach(btn=>{
-    btn.onclick = ()=> updateBookingStatus(btn.getAttribute("data-approve"), "approved");
+    btn.onclick = ()=> approveBooking(btn.getAttribute("data-approve"));   // CHANGED
   });
   document.querySelectorAll("[data-reject]").forEach(btn=>{
     btn.onclick = ()=> updateBookingStatus(btn.getAttribute("data-reject"), "rejected");
@@ -1231,10 +1296,27 @@ async function updateBookingStatus(id, status){
   catch(err){ console.error(err); alert("Couldn't update that request — please try again."); }
 }
 
+/* NEW: approve and share the host's number with the renter */
+async function approveBooking(id){
+  if(userProfile?.phone){
+    try{
+      await bookingsCollection.doc(id).update({ status:"approved", ownerPhone: userProfile.phone });
+    }catch(err){
+      console.error(err);
+      alert("Couldn't update that request — please try again.");
+    }
+  }else{
+    hostPhoneBookingId = id;
+    showHostPhoneModal = true;
+    render();
+  }
+}
+
 async function deleteListing(id){
   if(!confirm("Delete this listing? This can't be undone.")) return;
   try{ await productsCollection.doc(id).delete(); }
-  catch(err){ console.error(err); alert("Couldn't delete — please try again."); }}
+  catch(err){ console.error(err); alert("Couldn't delete — please try again."); }
+}
 
 loadProducts();
 </script>
