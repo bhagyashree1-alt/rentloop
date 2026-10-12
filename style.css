@@ -293,6 +293,11 @@ header{
 .btn-publish:hover{opacity:.9;}
 .btn-publish:disabled{opacity:.6;cursor:default;}
 
+/* ---------- deposit field (percent + rupee amount in brackets) ---------- */
+.deposit-wrap{display:flex;align-items:center;gap:12px;}
+.field .deposit-wrap input[type=number]{width:120px;flex-shrink:0;}
+.deposit-amount{font-size:15px;font-weight:600;color:var(--forest-dark);}
+
 /* ---------- auth screen ---------- */
 .auth-wrap{max-width:400px;margin:40px auto;padding:20px;}
 .btn-google{

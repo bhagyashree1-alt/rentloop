@@ -117,6 +117,9 @@ let state = {
   phoneStep: "enter",      // enter | verify
   phoneNumber: "",
   authError: "",
+  authInfo: "",
+  authEmail: "",
+  authName: "",
   authBusy: false,
   menuOpen: false
 };
@@ -128,6 +131,9 @@ function formatDate(d){
   if(!d) return "—";
   const date = new Date(d + "T00:00:00");
   return date.toLocaleDateString("en-IN",{day:"numeric",month:"short",year:"numeric"});
+}
+function formatINR(n){
+  return "₹" + Number(n || 0).toLocaleString("en-IN");
 }
 function imgOrPlaceholder(images, index, alt){
   if(images && images.length > 0){
@@ -143,7 +149,10 @@ function esc(str){
 function friendlyAuthError(err, mode){
   const code = err.code || "";
   if(mode === "login" && (code === "auth/user-not-found" || code === "auth/invalid-credential" || code === "auth/wrong-password")){
-    return "We couldn't log you in with that email and password. If you don't have an account yet, sign up below first.";
+    return "Incorrect email or password. If you signed up with Google, use “Continue with Google”. You can also reset your password with “Forgot password?”.";
+  }
+  if(mode === "reset" && code === "auth/user-not-found"){
+    return "No account found with that email.";
   }
   if(code === "auth/email-already-in-use"){
     return "That email already has an account — try logging in instead.";
@@ -169,7 +178,28 @@ function friendlyAuthError(err, mode){
   if(code === "auth/missing-phone-number"){
     return "Please enter your phone number.";
   }
+  if(code === "auth/popup-blocked"){
+    return "Your browser blocked the Google sign-in popup. Allow popups for this site and try again.";
+  }
+  if(code === "auth/unauthorized-domain"){
+    return "This address isn't authorised for Google sign-in. Open the site at http://localhost:5500 instead, or add this domain under Firebase Console → Authentication → Settings → Authorized domains.";
+  }
+  if(code === "auth/operation-not-allowed"){
+    return "This sign-in method isn't turned on yet. Enable it in Firebase Console → Authentication → Sign-in method.";
+  }
+  if(code === "auth/network-request-failed"){
+    return "Network problem — check your internet connection and try again.";
+  }
   return err.message || "Something went wrong.";
+}
+async function explainEmailProblem(email, fallback){
+  try{
+    const methods = await auth.fetchSignInMethodsForEmail(email);
+    if(methods.includes("google.com") && !methods.includes("password")){
+      return "This email is registered with Google. Click “Continue with Google” to log in, or use “Forgot password?” to also set a password.";
+    }
+  }catch(e){ /* ignore — fall back to the generic message */ }
+  return fallback;
 }
 function initials(name){
   if(!name) return "?";
@@ -285,6 +315,11 @@ function subscribeBookings(uid){
   unsubBookingsAsOwner = bookingsCollection.where("ownerUid","==",uid).onSnapshot((snap)=>{
     bookingsAsOwner = snap.docs.map(d=>({ id:d.id, ...d.data() }));
     bookingsAsOwner.sort((a,b)=> (b.createdAt?.seconds||0) - (a.createdAt?.seconds||0));
+    bookingsAsOwner.forEach(b=>{
+      if(b.status==="approved" && !b.ownerPhone && userProfile?.phone){
+        bookingsCollection.doc(b.id).update({ ownerPhone: userProfile.phone }).catch(console.error);
+      }
+    });
     render();
   }, (err)=> console.error("Could not load requests:", err));
 }
@@ -395,11 +430,11 @@ function renderAuthScreen(){
       ${mode==="signup" ? `
       <div class="field">
         <label>Name</label>
-        <input type="text" id="fName" placeholder="Your name">
+        <input type="text" id="fName" placeholder="Your name" value="${esc(state.authName||"")}">
       </div>` : ""}
       <div class="field">
         <label>Email</label>
-        <input type="email" id="fEmail" placeholder="you@example.com">
+        <input type="email" id="fEmail" placeholder="you@example.com" value="${esc(state.authEmail||"")}">
       </div>
       <div class="field">
         <label>Password</label>
@@ -409,7 +444,10 @@ function renderAuthScreen(){
         </div>
       </div>
 
+      ${mode==="login" ? `<p class="auth-switch" style="margin:-8px 0 14px;text-align:right;"><a href="#" id="forgotLink">Forgot password?</a></p>` : ""}
+
       ${state.authError ? `<div class="form-error">${esc(state.authError)}</div>` : ""}
+      ${state.authInfo ? `<div class="form-error" style="color:var(--forest);">${esc(state.authInfo)}</div>` : ""}
 
       <button type="submit" class="btn-publish" ${state.authBusy ? "disabled" : ""}>
         ${state.authBusy ? "Please wait…" : (mode==="login" ? "Log in" : "Sign up")}
@@ -641,7 +679,8 @@ function renderDetail(){
             </div>
             <div style="text-align:right">
               <div class="price-label">Refundable deposit</div>
-              <div class="deposit-value">${Icon.rupee}${p.deposit}</div>
+              <div class="deposit-value">${Icon.rupee}${Number(p.deposit||0).toLocaleString("en-IN")}</div>
+              ${p.actualPrice ? `<div class="price-label" style="margin:4px 0 0;">${p.depositPercent ?? Math.round((p.deposit||0)/p.actualPrice*100)}% of item value ${formatINR(p.actualPrice)}</div>` : ""}
             </div>
           </div>
           <div class="price-meta">
@@ -769,6 +808,11 @@ function renderRequests(){
 function renderForm(){
   const imgs = state.formImages;
   const editing = state.editingId ? products.find(p=>p.id===state.editingId) : null;
+  const editActual = editing?.actualPrice ?? "";
+  const editPercent = editing
+    ? (editing.depositPercent ?? (editing.actualPrice && editing.deposit ? Math.round(editing.deposit / editing.actualPrice * 100) : ""))
+    : "";
+  const editDepositAmount = (editActual !== "" && editPercent !== "") ? formatINR(Math.round(editActual * editPercent / 100)) : "";
   return `
   <div class="form-wrap">
     <h1 class="form-title serif">${editing ? "Edit your listing" : "List an item for rent"}</h1>
@@ -815,8 +859,19 @@ function renderForm(){
           <input type="number" min="0" id="fPrice" placeholder="500" value="${editing?.price ?? ""}">
         </div>
         <div>
-          <label>Refundable deposit (₹)</label>
-          <input type="number" min="0" id="fDeposit" placeholder="2000" value="${editing?.deposit ?? ""}">
+          <label>Actual price of the item (₹)</label>
+          <input type="number" min="0" id="fActualPrice" placeholder="10000" value="${editActual}">
+        </div>
+      </div>
+
+      <div class="field row-2">
+        <div>
+          <label>Refundable deposit (%)</label>
+          <input type="number" min="0" max="100" id="fDepositPercent" placeholder="20" value="${editPercent}">
+        </div>
+        <div>
+          <label>Deposit amount (auto)</label>
+          <input type="text" id="fDepositAmount" readonly tabindex="-1" placeholder="Calculated automatically" value="${editDepositAmount}" style="background:var(--tint);">
         </div>
       </div>
 
@@ -855,6 +910,7 @@ function attachAuthEvents(){
     e.preventDefault();
     state.authMode = state.authMode==="login" ? "signup" : "login";
     state.authError = "";
+    state.authInfo = "";
     render();
   };
 
@@ -865,7 +921,13 @@ function attachAuthEvents(){
       await auth.signInWithPopup(new firebase.auth.GoogleAuthProvider());
     }catch(err){
       console.error(err);
-      state.authError = err.message || "Google sign-in failed.";
+      const code = err.code || "";
+      // User simply closed the popup — not an error, so show nothing
+      // and leave the typed email/password untouched.
+      if(code === "auth/popup-closed-by-user" || code === "auth/cancelled-popup-request"){
+        return;
+      }
+      state.authError = friendlyAuthError(err, "google");
       render();
     }
   };
@@ -880,6 +942,9 @@ function attachAuthEvents(){
       const name = nameEl ? nameEl.value.trim() : "";
 
       state.authError = "";
+      state.authInfo = "";
+      state.authEmail = email;
+      state.authName = name;
       if(!email || !password){
         state.authError = "Please fill in email and password.";
         render();
@@ -903,12 +968,40 @@ function attachAuthEvents(){
         }
       }catch(err){
         console.error(err);
-        state.authError = friendlyAuthError(err, state.authMode);
+        const code = err.code || "";
+        let msg = friendlyAuthError(err, state.authMode);
+        const credentialProblem = state.authMode==="login" && (code==="auth/invalid-credential" || code==="auth/wrong-password" || code==="auth/user-not-found");
+        if(credentialProblem || code==="auth/email-already-in-use"){
+          msg = await explainEmailProblem(email, msg);
+        }
+        state.authError = msg;
         state.authBusy = false;
         render();
       }
     };
   }
+
+  const forgotLink = document.getElementById("forgotLink");
+  if(forgotLink) forgotLink.onclick = async (e)=>{
+    e.preventDefault();
+    const email = document.getElementById("fEmail").value.trim();
+    state.authError = "";
+    state.authInfo = "";
+    state.authEmail = email;
+    if(!email){
+      state.authError = "Type your email above first, then click “Forgot password?”.";
+      render();
+      return;
+    }
+    try{
+      await auth.sendPasswordResetEmail(email);
+      state.authInfo = "Password reset email sent to " + email + ". Check your inbox (and spam folder).";
+    }catch(err){
+      console.error(err);
+      state.authError = friendlyAuthError(err, "reset");
+    }
+    render();
+  };
 
   const togglePassword = document.getElementById("togglePassword");
   if(togglePassword){
@@ -1198,6 +1291,23 @@ function attachEvents(){
     };
   });
 
+  const actualInput = document.getElementById("fActualPrice");
+  const percentInput = document.getElementById("fDepositPercent");
+  const depositAmountInput = document.getElementById("fDepositAmount");
+  if(actualInput && percentInput && depositAmountInput){
+    const updateDeposit = ()=>{
+      const actual = Number(actualInput.value);
+      const percent = Number(percentInput.value);
+      if(actualInput.value === "" || percentInput.value === "" || isNaN(actual) || isNaN(percent)){
+        depositAmountInput.value = "";
+        return;
+      }
+      depositAmountInput.value = formatINR(Math.round(actual * percent / 100));
+    };
+    actualInput.addEventListener("input", updateDeposit);
+    percentInput.addEventListener("input", updateDeposit);
+  }
+
   const addForm = document.getElementById("addForm");
   if(addForm){
     addForm.onsubmit = async (e)=>{
@@ -1208,8 +1318,21 @@ function attachEvents(){
       const errorEl = document.getElementById("formError");
       const submitBtn = addForm.querySelector(".btn-publish");
 
+      const actualPrice = Number(document.getElementById("fActualPrice").value);
+      const depositPercent = Number(document.getElementById("fDepositPercent").value) || 0;
+
       if(!title || !price || !until || state.formImages.length===0){
         errorEl.textContent = "Please add a title, daily rent, a closing date, and at least one photo.";
+        errorEl.style.display = "block";
+        return;
+      }
+      if(!actualPrice || actualPrice <= 0){
+        errorEl.textContent = "Please enter the actual price of the item.";
+        errorEl.style.display = "block";
+        return;
+      }
+      if(depositPercent < 0 || depositPercent > 100){
+        errorEl.textContent = "Deposit percentage must be between 0 and 100.";
         errorEl.style.display = "block";
         return;
       }
@@ -1218,7 +1341,9 @@ function attachEvents(){
         title,
         category: document.getElementById("fCategory").value,
         price: Number(price),
-        deposit: Number(document.getElementById("fDeposit").value) || 0,
+        actualPrice,
+        depositPercent,
+        deposit: Math.round(actualPrice * depositPercent / 100),
         condition: document.getElementById("fCondition").value,
         location: document.getElementById("fLocation").value.trim() || "Location not specified",
         availableUntil: until,
